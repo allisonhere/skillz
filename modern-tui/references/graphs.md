@@ -28,6 +28,65 @@ or
 
 These work especially well in one-row resource summaries.
 
+### Implementation
+
+```go
+var sparkRamp = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
+
+// Sparkline renders the last `width` samples. Scale is 0..max; when max <= 0 it
+// autoscales to the window's peak. Missing samples (NaN) render as '·' so
+// "no data" never looks like zero.
+func Sparkline(samples []float64, width int, maxVal float64) string {
+    if width <= 0 {
+        return ""
+    }
+    if len(samples) > width {
+        samples = samples[len(samples)-width:]
+    }
+    if maxVal <= 0 {
+        for _, v := range samples {
+            if !math.IsNaN(v) && v > maxVal {
+                maxVal = v
+            }
+        }
+    }
+    var b strings.Builder
+    for i := 0; i < width-len(samples); i++ {
+        b.WriteRune('·') // pad history we don't have yet
+    }
+    for _, v := range samples {
+        switch {
+        case math.IsNaN(v):
+            b.WriteRune('·')
+        case maxVal <= 0:
+            b.WriteRune(sparkRamp[0])
+        default:
+            idx := int(v / maxVal * float64(len(sparkRamp)-1))
+            b.WriteRune(sparkRamp[min(max(idx, 0), len(sparkRamp)-1)])
+        }
+    }
+    return b.String()
+}
+
+// Meter renders a fraction as `width` segmented cells. frac is clamped to 0..1;
+// a negative frac means "unavailable" and renders as dots.
+func Meter(frac float64, width int) string {
+    if width <= 0 {
+        return ""
+    }
+    if frac < 0 || math.IsNaN(frac) {
+        return strings.Repeat("·", width)
+    }
+    frac = math.Min(frac, 1)
+    filled := int(math.Round(frac * float64(width)))
+    return strings.Repeat("▰", filled) + strings.Repeat("▱", width-filled)
+}
+```
+
+Both return exactly `width` cells for every input — that is what keeps dashboard columns aligned. Assert it in a test.
+
+For the ASCII Unicode level, swap ramps behind the same signature: `#` / `-` for meters, and `_.-~=` style ramps or a bare number for sparklines.
+
 ## Block Meters
 
 Use full/partial block characters when terminal support is reliable and finer visual resolution matters.
