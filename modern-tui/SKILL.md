@@ -240,6 +240,8 @@ Before considering a TUI change complete, verify:
 
 Use state-transition tests for interaction logic and snapshot/buffer/golden tests for important rendering where the framework makes this practical.
 
+Read `references/testing.md` for tools, commands, and the bounded-render invariant.
+
 Read `references/review-checklist.md` for a complete design/code review pass.
 
 ## Tide-Family Conventions
