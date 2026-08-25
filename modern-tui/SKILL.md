@@ -260,6 +260,8 @@ When working on Tide, TideMail, tideui, or a related application, preserve the e
 
 Prefer extending reusable primitives in `tideui` when a behavior is genuinely reusable across applications. Keep application-specific state, commands, persistence, and service integration in the application.
 
+Cross-repo facts about these applications — which repos exist, what is duplicated between them, what `tideui` already exposes, and each repo's release shape — live in the `tide-tui-ecosystem` skill. This skill stays portable: design and implementation craft that applies to any TUI.
+
 ## Additional Resources
 
 Load only what the task needs:

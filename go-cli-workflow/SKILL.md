@@ -137,3 +137,9 @@ existing convention.
 - Man pages / install paths: tools that install system-wide (see assho's Makefile)
   install to `/usr/local/bin` and `/usr/local/share/man/man1` via `sudo`, gated behind
   an explicit `make install` — never assume install-on-build.
+
+## See also
+
+- `tide-tui-ecosystem` — cross-repo facts for the Tide-family Go TUIs (duplicated files,
+  `tideui` as a dependency, per-repo release scripts).
+- `modern-tui` — how to design and implement the TUI itself, when the CLI has one.
