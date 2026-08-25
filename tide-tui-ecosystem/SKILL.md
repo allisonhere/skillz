@@ -1,6 +1,6 @@
 ---
 name: tide-tui-ecosystem
-description: Use when editing any Tide-family terminal app (tide, tidemail, tideui, ripple, TideFTP, whatthedock, zellit) — cross-repo facts these separate repos can't show you: what's duplicated, what tideui already provides, and per-repo release shape.
+description: Use when editing any Tide-family terminal app (tide, tidemail, tideui, ripple, TideFTP, whatthedock, zellit) — cross-repo facts these separate repos can't show you, from duplicated files to what tideui already provides to per-repo release shape.
 version: 1.0.0
 license: MIT
 platforms: [linux, macos]

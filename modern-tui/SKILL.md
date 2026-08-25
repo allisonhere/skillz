@@ -1,6 +1,6 @@
 ---
 name: modern-tui
-description: Design, build, or review a keyboard-first TUI (terminal UI) — multi-pane layouts, command palettes, focus/selection, themes, compact terminal graphs — in Bubble Tea/Lipgloss, Ratatui/Crossterm, or a comparable framework.
+description: Use when designing, building, or reviewing a keyboard-first TUI (terminal UI) — multi-pane layouts, command palettes, focus/selection, themes, compact terminal graphs — in Bubble Tea/Lipgloss, Ratatui/Crossterm, or a comparable framework.
 version: 1.1.0
 license: MIT
 platforms: [linux, macos, windows]

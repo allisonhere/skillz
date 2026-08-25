@@ -20,13 +20,20 @@ def load_frontmatter(text, errors, skill):
     block = text[4:end]
     try:
         import yaml  # optional
-        data = yaml.safe_load(block) or {}
     except ImportError:
-        data = {}
-        for line in block.splitlines():
-            m = re.match(r"^([a-z_]+):\s*(.*)$", line)
-            if m:
-                data[m.group(1)] = m.group(2)
+        yaml = None
+    if yaml is not None:
+        try:
+            return yaml.safe_load(block) or {}
+        except Exception as exc:  # invalid YAML is a hard error, not a crash
+            first = str(exc).splitlines()[0]
+            errors.append(f"{skill}: frontmatter is not valid YAML ({first})")
+            return {}
+    data = {}
+    for line in block.splitlines():
+        m = re.match(r"^([a-z_]+):\s*(.*)$", line)
+        if m:
+            data[m.group(1)] = m.group(2)
     return data
 
 
