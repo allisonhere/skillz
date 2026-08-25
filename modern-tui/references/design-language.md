@@ -99,3 +99,50 @@ Distinctive does not mean loud. Character can come from:
 - strong theme curation
 - compact graphs
 - motion used sparingly for meaningful state
+
+## Before / After
+
+**Footer** — every command vs. the five that matter:
+
+```text
+✗  q:quit ?:help /:search r:refresh R:restart s:stop S:start d:delete l:logs i:inspect e:exec p:prune t:theme m:manage c:copy Tab:next
+✓  m manage   / search   l logs   ? help
+```
+
+**List row** — decoration vs. hierarchy (primary bright, metadata quiet, state as glyph + color):
+
+```text
+✗  ┌────────────────────────────────────────┐
+   │ [RUNNING] postgres-main   (5432)  98%  │
+   └────────────────────────────────────────┘
+
+✓  ● postgres-main      5432   cpu 12%  mem 98%  ▇▆▅▃▂
+     up 4d
+```
+
+**Empty state** — blank vs. next action:
+
+```text
+✗  (nothing)
+✓  No containers running — press n to create one, r to refresh
+```
+
+**Modal** — full-screen box for a yes/no vs. a proportionate soft panel:
+
+```text
+✗  a 78×22 bordered box containing one question
+✓  ╭─ Delete feed ───────────────────────────╮
+   │ Delete "Example Weekly"?                │
+   │ Removes 412 local articles.             │
+   │                                         │
+   │        [ Delete ]   Cancel              │
+   ╰─────────────────────────────────────────╯
+     enter confirm   esc cancel
+```
+
+**Focus** — hue-only vs. redundant cue (rail + background + brighter text):
+
+```text
+✗  selected row differs only by a slightly bluer foreground
+✓  ▌ selected row on a filled background
+```
