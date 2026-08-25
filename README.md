@@ -33,6 +33,19 @@ mkdir another-skill
 $EDITOR another-skill/SKILL.md
 ```
 
+## Validating skills
+
+```bash
+./check-skill              # all skills
+./check-skill modern-tui   # one skill
+```
+
+Checks that frontmatter parses and carries `name`/`description`, that `name` matches the
+directory, that every `references/…` path named in `SKILL.md` exists (and that every
+reference file is actually linked), that markdown code fences are balanced, and that the
+description does not waste Hermes' 57-character skill-index window on boilerplate.
+Exit code is non-zero on errors; warnings do not fail.
+
 ## Installing skills
 
 Run `install-skill` from anywhere — it resolves its own location, so it doesn't

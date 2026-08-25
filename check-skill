@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Validate skills in this repo: frontmatter, reference links, fences, description length."""
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+HERMES_DESC_TRUNCATE = 57
+REQUIRED_KEYS = ("name", "description")
+
+
+def load_frontmatter(text, errors, skill):
+    if not text.startswith("---\n"):
+        errors.append(f"{skill}: SKILL.md must start with YAML frontmatter")
+        return {}
+    end = text.find("\n---\n", 3)
+    if end == -1:
+        errors.append(f"{skill}: unterminated frontmatter")
+        return {}
+    block = text[4:end]
+    try:
+        import yaml  # optional
+        data = yaml.safe_load(block) or {}
+    except ImportError:
+        data = {}
+        for line in block.splitlines():
+            m = re.match(r"^([a-z_]+):\s*(.*)$", line)
+            if m:
+                data[m.group(1)] = m.group(2)
+    return data
+
+
+def check_skill(skill, errors, warnings):
+    d = os.path.join(ROOT, skill)
+    path = os.path.join(d, "SKILL.md")
+    text = open(path, encoding="utf-8").read()
+    fm = load_frontmatter(text, errors, skill)
+
+    for key in REQUIRED_KEYS:
+        if not fm.get(key):
+            errors.append(f"{skill}: frontmatter missing '{key}'")
+
+    if fm.get("name") and fm["name"] != skill:
+        errors.append(f"{skill}: frontmatter name '{fm['name']}' != directory name")
+
+    desc = str(fm.get("description", ""))
+    head = desc[:HERMES_DESC_TRUNCATE].lower()
+    if desc and head.startswith("this skill should be used"):
+        warnings.append(
+            f"{skill}: description wastes the {HERMES_DESC_TRUNCATE}-char Hermes index window "
+            f"on boilerplate: {desc[:HERMES_DESC_TRUNCATE]!r}"
+        )
+
+    # references linked from SKILL.md must exist
+    linked = set(re.findall(r"(?:references|templates|scripts)/[\w.-]+\.\w+", text))
+    for rel in sorted(linked):
+        if not os.path.isfile(os.path.join(d, rel)):
+            errors.append(f"{skill}: SKILL.md links missing file {rel}")
+
+    # every reference file should be linked from SKILL.md
+    for sub in ("references", "templates"):
+        subdir = os.path.join(d, sub)
+        if not os.path.isdir(subdir):
+            continue
+        for name in sorted(os.listdir(subdir)):
+            rel = f"{sub}/{name}"
+            if rel not in linked:
+                warnings.append(f"{skill}: {rel} exists but is never referenced from SKILL.md")
+
+    # balanced code fences in every markdown file
+    for dirpath, _dirs, files in os.walk(d):
+        for name in files:
+            if not name.endswith(".md"):
+                continue
+            p = os.path.join(dirpath, name)
+            body = open(p, encoding="utf-8").read()
+            fences = len(re.findall(r"^\s*```", body, re.M)) + len(re.findall(r"^\s*````", body, re.M))
+            if fences % 2:
+                errors.append(f"{skill}: unbalanced code fence in {os.path.relpath(p, d)}")
+
+
+def main():
+    skills = sorted(
+        n for n in os.listdir(ROOT)
+        if os.path.isfile(os.path.join(ROOT, n, "SKILL.md"))
+    )
+    targets = sys.argv[1:] or skills
+    errors, warnings = [], []
+    for skill in targets:
+        if skill not in skills:
+            errors.append(f"{skill}: no such skill directory with SKILL.md")
+            continue
+        check_skill(skill, errors, warnings)
+
+    for w in warnings:
+        print(f"warn:  {w}")
+    for e in errors:
+        print(f"ERROR: {e}")
+    print(f"\n{len(targets)} skill(s) checked — {len(errors)} error(s), {len(warnings)} warning(s)")
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
