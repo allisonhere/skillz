@@ -24,6 +24,18 @@ skillz/
 A skill is just any top-level directory with a `SKILL.md` in it. There's no
 registry to keep in sync — the installer finds skills by scanning for `*/SKILL.md`.
 
+## What's in here
+
+| Skill | Use it when |
+|-------|-------------|
+| `modern-tui` | designing, building, or reviewing any keyboard-first terminal UI |
+| `tide-tui-ecosystem` | editing a Tide-family repo — cross-repo duplication, `tideui`, release shape |
+| `go-cli-workflow` | building, testing, versioning, or releasing a Go CLI |
+| `astro-content-seo` | adding content or deploying an Astro content site |
+| `omarchy-noctalia-plugin-scaffold` | building an Omarchy/Noctalia widget or Hyprland desktop tool |
+
+`./check-skill` validates all of them; `install-skill --tui` installs interactively.
+
 ## Adding a new skill
 
 Make a directory, write a `SKILL.md` with `name` and `description` in the
@@ -41,14 +53,23 @@ $EDITOR another-skill/SKILL.md
 ```bash
 ./check-skill              # all skills
 ./check-skill modern-tui   # just one
+./check-skill --strict     # treat warnings as failures too
 ```
 
-It checks the boring stuff so I don't have to: frontmatter actually parses and
-has `name`/`description`, `name` matches the directory it's in, every
+It checks the boring stuff so I don't have to: frontmatter actually parses as YAML
+and has `name`/`description`, `name` matches the directory it's in, every
 `references/…` path mentioned in `SKILL.md` really exists (and vice versa — no
 orphaned reference files), markdown fences are balanced, and the description
-doesn't blow Hermes' 57-character skill-index preview on boilerplate. Exits
-non-zero on errors; warnings won't fail the run.
+doesn't blow Hermes' 57-character skill-index preview on boilerplate.
+
+It also warns about the things that quietly rot: a missing
+`version`/`license`/`platforms`, a missing `metadata.hermes.category` (without it
+`--target hermes` dumps the skill in `general/`), and any `~/Projects/…` path a skill
+mentions that doesn't exist on this machine — that last one catches "grep the sibling
+repo" instructions pointing at a repo that was never cloned here. Mentions already
+written defensively (guarded with `2>/dev/null`, or globbed) are left alone.
+
+Exits non-zero on errors; warnings won't fail the run unless you pass `--strict`.
 
 ## Installing skills
 
@@ -106,8 +127,7 @@ It's read-only about anything risky: a target it doesn't recognize as either
 "not installed" or "installed by this repo" is reported as a conflict rather
 than touched, same as the flag-driven installer without `--force`.
 
-There's only one skill in here today (`modern-tui`), so the list is short —
-more are coming, and the picker scales to a full list without any changes.
+The picker scales to the full list without any changes as more skills land.
 
 The first run builds `tui/skillz-tui` automatically (needs Go on `PATH`);
 after that it just launches. If you'd rather build it yourself:
