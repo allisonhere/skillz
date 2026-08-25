@@ -10,6 +10,7 @@ anything else that shows up later).
 skillz/
 ├── install-skill        # installer script (see below)
 ├── check-skill           # validator script (see below)
+├── tui/                   # the interactive picker's source (see below)
 ├── README.md
 ├── modern-tui/
 │   ├── SKILL.md          # required: name + description frontmatter
@@ -76,6 +77,38 @@ current directory doesn't matter.
 
 If you put `~/Projects/skillz` on your `PATH` (or symlink `install-skill` onto
 it), you can drop the leading path and just type `install-skill modern-tui`.
+
+## Or skip the flags and just browse
+
+```bash
+install-skill --tui
+```
+
+This is the same installer, just interactive — a little Bubble Tea app (built
+with `modern-tui`'s own house style, naturally) that lists every skill in the
+repo, shows install status per target at a glance, and lets you toggle a
+skill on or off for `agents`/`codex`/`claude`/`hermes` with a couple of
+keystrokes instead of remembering flags:
+
+- `↑`/`↓` or `j`/`k` to move, `enter` to open a skill
+- inside a skill, `space` installs at the highlighted target, or asks
+  `y`/`n` to confirm before uninstalling one that's already there
+- `r` re-scans status, `esc`/`q` backs out, `q` quits from the list
+
+It's read-only about anything risky: a target it doesn't recognize as either
+"not installed" or "installed by this repo" is reported as a conflict rather
+than touched, same as the flag-driven installer without `--force`.
+
+There's only one skill in here today (`modern-tui`), so the list is short —
+more are coming, and the picker scales to a full list without any changes.
+
+The first run builds `tui/skillz-tui` automatically (needs Go on `PATH`);
+after that it just launches. If you'd rather build it yourself:
+
+```bash
+cd ~/Projects/skillz/tui
+go build -o skillz-tui .
+```
 
 ## How installs actually work
 

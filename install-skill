@@ -71,6 +71,7 @@ ${c_bold}install-skill${c_reset} - install skills from this repo into local agen
 Usage:
   install-skill <skill> [<skill> ...] [options]
   install-skill --list
+  install-skill --tui
   install-skill --help
 
 Options:
@@ -86,6 +87,9 @@ Options:
                     never deleted outright.
   --list            List skills available in this repo and where each one
                     is currently installed.
+  --tui             Launch the interactive picker instead (browse skills,
+                    toggle install/uninstall per target). Built from tui/ on
+                    first use if Go is available and no binary exists yet.
   --help            Show this help.
 
 Examples:
@@ -95,6 +99,7 @@ Examples:
   install-skill modern-tui --all
   install-skill modern-tui --target hermes
   install-skill --list
+  install-skill --tui
 EOF
 }
 
@@ -132,6 +137,7 @@ skills=()
 targets=()
 force=0
 do_list=0
+do_tui=0
 
 if [ $# -eq 0 ]; then
   usage
@@ -142,6 +148,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --help|-h) usage; exit 0 ;;
     --list) do_list=1; shift ;;
+    --tui) do_tui=1; shift ;;
     --all) targets=("${DEFAULT_TARGETS[@]}"); shift ;;
     --force) force=1; shift ;;
     --target)
@@ -170,6 +177,23 @@ for t in "${targets[@]:-}"; do
     exit 1
   fi
 done
+
+# ---------------------------------------------------------------------------
+# --tui
+# ---------------------------------------------------------------------------
+if [ "$do_tui" -eq 1 ]; then
+  tui_bin="$REPO_DIR/tui/skillz-tui"
+  if [ ! -x "$tui_bin" ]; then
+    if ! command -v go >/dev/null 2>&1; then
+      err "The TUI binary hasn't been built yet, and 'go' isn't on PATH to build it."
+      err "Install Go, then run: go build -o '$tui_bin' '$REPO_DIR/tui'"
+      exit 1
+    fi
+    info "Building the TUI (first run only)..."
+    ( cd "$REPO_DIR/tui" && go build -o "$tui_bin" . )
+  fi
+  exec "$tui_bin"
+fi
 
 # ---------------------------------------------------------------------------
 # --list
