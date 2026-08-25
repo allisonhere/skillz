@@ -1,7 +1,8 @@
 ---
 name: modern-tui
-description: This skill should be used when the user asks to "design a TUI", "build a terminal UI", "improve this terminal interface", "review this TUI", "make this TUI modern", "add a command palette", "add terminal graphs", "design a multi-pane terminal app", or is implementing a keyboard-first terminal application with Bubble Tea/Lipgloss, Ratatui/Crossterm, or a comparable TUI framework.
-version: 1.0.0
+description: Design, build, or review a keyboard-first TUI (terminal UI) — multi-pane layouts, command palettes, focus/selection, themes, compact terminal graphs — in Bubble Tea/Lipgloss, Ratatui/Crossterm, or a comparable framework.
+version: 1.1.0
+license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
