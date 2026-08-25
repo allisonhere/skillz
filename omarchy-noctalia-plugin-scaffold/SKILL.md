@@ -12,30 +12,77 @@ metadata:
 
 # Omarchy/Noctalia plugin scaffold
 
-The user runs Omarchy (Hyprland-based) with the Noctalia shell, and builds small
-Python tools that integrate with it. `launcher-installer`, `omarchy-noctalia`,
-`tablet`, and `screen-widget` all follow the same rough shape.
+The user runs Omarchy (Hyprland-based) with the Noctalia shell. Two shapes exist — check
+which one the task needs before scaffolding.
 
-## Project layout
+**A. Pure Noctalia plugin (no Python).** `screen-widget` is exactly this: `plugin.toml`
++ `widget.luau` + `translations/en.json`, nothing else. Bar widgets and indicators
+belong here.
 
+**B. Python tool with an optional Noctalia widget.** `tablet` is the reference:
+
+```text
+pyproject.toml              # setuptools>=68, requires-python >=3.11, [project.scripts]
+Makefile
+src/tabletctl.py            # the logic
+tests/test_tabletctl.py     # pytest, one module per source module
+noctalia/plugin.toml        # Noctalia manifest (note: noctalia/, not plugin/)
+noctalia/widget.luau        # the shell-side widget, in Luau
+systemd/*.service           # user units (z13-tablet-mode.service, z13-squeekboard.service)
+layouts/*.yaml              # tool data
+install.sh                  # copies config, installs units, systemctl --user enable
+deploy/
 ```
-pyproject.toml       # setuptools, requires-python >=3.11, [project.scripts] entry point
-src/<pkg>/            # the actual package
-tests/                # pytest, one test module per source module
-plugin/plugin.toml    # Noctalia plugin manifest, when the tool is a Noctalia plugin
-```
 
-`pyproject.toml` uses `setuptools>=68` as the build backend and declares a console
-entry point under `[project.scripts]` — that's how these tools become a runnable
-command after install, not via a hand-rolled shebang script.
+`launcher-installer` and `omarchy-noctalia` follow the same B shape. Logic stays in
+`src/`; the manifest and widget stay thin.
+
+`pyproject.toml` uses `setuptools>=68` as the build backend and declares a console entry
+point under `[project.scripts]` — that's how these tools become a runnable command after
+install, not via a hand-rolled shebang script.
 
 ## Noctalia plugin manifest
 
-If the tool plugs into the Noctalia shell (as opposed to being a standalone CLI),
-it needs a `plugin.toml` (sometimes under a `plugin/` or `noctalia/` subdirectory,
-per `tablet`'s layout, which keeps the Noctalia integration separate from the core
-`src/tabletctl.py` logic). Keep the plugin manifest thin — logic belongs in `src/`,
-the manifest just wires it into the shell.
+`plugin.toml` is a real schema, not freeform. Verified shape (from `screen-widget`):
+
+```toml
+id = "allieb/omarchy-workspaces"      # namespaced id
+name = "Workspaces"
+version = "1.1.3"
+plugin_api = 19                        # MUST match the installed Noctalia plugin API
+author = "allieb"
+license = "MIT"
+icon = "layout-dashboard"              # Lucide-style icon name
+description = "Five configurable workspace indicators for Hyprland."
+tags = ["bar", "workspaces", "hyprland"]
+dependencies = ["hyprctl"]             # external commands the widget shells out to
+
+[[setting]]
+key = "icon_layout"
+type = "select"
+label_key = "settings.icon_layout.label"
+description_key = "settings.icon_layout.description"
+default = "pill"
+options = [
+  { value = "pill", label_key = "settings.icon_layout.pill" },
+  { value = "dots", label_key = "settings.icon_layout.dots" },
+]
+```
+
+Rules that follow:
+
+- `plugin_api` is a hard compatibility gate. Read the installed shell's current value
+  before inventing one — copy it from a working plugin
+  (`grep plugin_api ~/.config/noctalia/plugins/*/plugin.toml`) rather than guessing.
+- Every user-visible string is a `*_key` resolved from `translations/en.json`. Don't
+  inline English in `plugin.toml`; add the key to the translations file in the same
+  change or the UI shows a raw key.
+- `dependencies` lists external commands, so declare `hyprctl`/`wpctl`/etc. instead of
+  assuming they exist.
+- Settings drive the widget; keep behaviour in `widget.luau` (or the Python core), not in
+  the manifest.
+
+Templates to copy: `templates/plugin.toml`, `templates/en.json`.
 
 ## System integration
 
@@ -45,19 +92,33 @@ file — not installed as a system-wide service unless there's a specific reason
 as root. Check for an existing `install.sh` before writing a fresh one; the pattern
 (copy config, install unit, `systemctl --user enable`) is already established.
 
-## Testing
+## Testing and lint
 
 `pytest`, one test module per source module (`test_cli.py` for `cli.py`,
-`test_manager.py` for `manager.py`, etc.). Keep that mapping when adding new source
-files — it's what the existing repos do and it makes it obvious what's covered.
+`test_manager.py` for `manager.py`). Keep that mapping when adding new source files —
+it's what the existing repos do and it makes coverage obvious.
+
+`tablet` also runs **ruff** and **mypy** (both `.ruff_cache/` and `.mypy_cache/` are
+present, alongside a `Makefile`), so "tests pass" isn't the whole gate:
+
+```sh
+grep -E '^[a-z][a-z-]*:' Makefile | cut -d: -f1     # see what's wired
+ruff check . && mypy src && pytest
+```
+
+Luau widgets have no test harness here — verify them by reloading the plugin in the
+shell and watching its log.
 
 ## Starting a new plugin
 
-When asked to build a new Omarchy/Noctalia tool, default to this scaffold rather than
-a bare script:
-1. `pyproject.toml` with a `[project.scripts]` entry point.
-2. `src/<pkg>/` for logic, `tests/` mirroring it.
-3. `plugin/plugin.toml` only if it actually integrates with the Noctalia shell UI —
-   a pure background daemon or CLI utility (like `tablet`'s core) doesn't need one.
-4. `install.sh` (+ a systemd user unit under `systemd/` or `deploy/`) if it needs to
-   run persistently in the background.
+1. Decide shape A (pure Luau widget) or B (Python tool, optional widget). A bar
+   indicator is A; anything with state, a daemon, or a CLI surface is B.
+2. Shape A: `plugin.toml` + `widget.luau` + `translations/en.json`. Done — no
+   `pyproject.toml`.
+3. Shape B: `pyproject.toml` with a `[project.scripts]` entry point, `src/<pkg>/`,
+   `tests/` mirroring it, and a `Makefile` wiring lint/type/test.
+4. Add `noctalia/plugin.toml` + `noctalia/widget.luau` only if it surfaces in the shell
+   UI — a pure background daemon or CLI utility doesn't need one.
+5. Add `install.sh` + `systemd/*.service` (user units, `systemctl --user enable`) only if
+   it must run persistently. Check for an existing `install.sh` first; the pattern
+   (copy config, install unit, enable) is already established.
