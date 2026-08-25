@@ -58,6 +58,45 @@ def check_skill(skill, errors, warnings):
             f"on boilerplate: {desc[:HERMES_DESC_TRUNCATE]!r}"
         )
 
+    # frontmatter completeness - Hermes uses these for category placement + index
+    for key, why in (
+        ("version", "no version — bumps are invisible to consumers"),
+        ("license", "no license"),
+        ("platforms", "no platforms list"),
+    ):
+        if not fm.get(key):
+            warnings.append(f"{skill}: {why}")
+    meta = fm.get("metadata") or {}
+    hermes = meta.get("hermes") if isinstance(meta, dict) else None
+    if not (isinstance(hermes, dict) and hermes.get("category")):
+        warnings.append(
+            f"{skill}: no metadata.hermes.category — install-skill --target hermes will "
+            f"drop it in general/"
+        )
+
+    # path-claim lint: a skill naming a local path that doesn't exist sends agents to a
+    # dead directory (these repos aren't cloned on every machine). Mentions that are
+    # already written defensively (guarded with 2>/dev/null, or globbed) are skipped.
+    home = os.path.expanduser("~")
+    claim_re = re.compile(r"~/(?:Projects|\.config|\.local)/[\w.@-]+")
+    for dirpath, _dirs, files in os.walk(d):
+        for name in sorted(files):
+            if not name.endswith(".md"):
+                continue
+            p = os.path.join(dirpath, name)
+            rel = os.path.relpath(p, d)
+            for lineno, line in enumerate(open(p, encoding="utf-8"), 1):
+                if "2>/dev/null" in line:
+                    continue
+                for m in claim_re.finditer(line):
+                    if line[m.end():m.end() + 1] == "*":
+                        continue
+                    claim = m.group(0)
+                    if not os.path.exists(os.path.join(home, claim[2:])):
+                        warnings.append(
+                            f"{skill}: {rel}:{lineno} references {claim} which does not exist here"
+                        )
+
     # references linked from SKILL.md must exist. Deliberately just
     # references/templates, not scripts/ - a skill's prose can legitimately
     # mention a scripts/foo.mjs path that lives in the *target* project it's
@@ -90,11 +129,13 @@ def check_skill(skill, errors, warnings):
 
 
 def main():
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    strict = "--strict" in sys.argv
     skills = sorted(
         n for n in os.listdir(ROOT)
         if os.path.isfile(os.path.join(ROOT, n, "SKILL.md"))
     )
-    targets = sys.argv[1:] or skills
+    targets = args or skills
     errors, warnings = [], []
     for skill in targets:
         if skill not in skills:
@@ -107,7 +148,9 @@ def main():
     for e in errors:
         print(f"ERROR: {e}")
     print(f"\n{len(targets)} skill(s) checked — {len(errors)} error(s), {len(warnings)} warning(s)")
-    return 1 if errors else 0
+    if strict and warnings and not errors:
+        print("--strict: failing on warnings")
+    return 1 if errors or (strict and warnings) else 0
 
 
 if __name__ == "__main__":
