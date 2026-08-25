@@ -263,9 +263,14 @@ Prefer extending reusable primitives in `tideui` when a behavior is genuinely re
 Load only what the task needs:
 
 - `references/design-language.md` — layouts, visual hierarchy, themes, borders, density, modals
-- `references/interaction.md` — navigation, command palette, help, forms, mouse behavior
+- `references/interaction.md` — navigation, command palette, help, forms, scrolling, mouse behavior
 - `references/architecture.md` — Bubble Tea and Ratatui architecture, async work, state separation, resize handling
+- `references/text-and-width.md` — display width, grapheme clusters, ANSI-safe truncation and padding
+- `references/terminal-lifecycle.md` — startup/teardown, panics, signals, suspend/resume, clipboard, `$EDITOR`, logging
+- `references/capabilities.md` — color profiles, `NO_COLOR`, non-TTY output, Unicode/ASCII degradation, tmux
+- `references/performance.md` — frame budget, redraw discipline, list virtualization, update coalescing
 - `references/graphs.md` — compact TUI charts and metric patterns
+- `references/testing.md` — state-transition tests, golden/snapshot rendering, randomized bounded-render invariants
 - `references/review-checklist.md` — systematic review checklist
 
 Use `templates/repo-mining-prompt.md` to have Codex or another repository-aware coding agent extract additional house patterns from existing TUI repositories.
