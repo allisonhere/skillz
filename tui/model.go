@@ -216,13 +216,36 @@ func clampWidth(s string, w int) string {
 func (m model) viewList() string {
 	var b strings.Builder
 
-	subtitle := fmt.Sprintf("%d skill%s available", len(m.skills), plural(len(m.skills)))
-	b.WriteString(styleTitle.Render("skillz") + "  " + styleDim.Render(subtitle) + "\n\n")
+	b.WriteString(styleAccent.Render(iconMark) + " " + gradientText("skillz", titleGradient, true) + "\n")
+	b.WriteString(gradientRule(m.width, titleGradient) + "\n")
+
+	installed, total := m.coverage()
+	frac := 0.0
+	if total > 0 {
+		frac = float64(installed) / float64(total)
+	}
+	skillCount := fmt.Sprintf("%d skill%s", len(m.skills), plural(len(m.skills)))
+	counts := fmt.Sprintf(" %d/%d installs", installed, total)
+	// The meter is decoration on top of skillCount/counts, which always
+	// render in full - so it's the one part of this line allowed to shrink
+	// (down to skipping it) rather than get clamped mid-glyph.
+	meterW := m.width - lipgloss.Width(skillCount) - 3 - lipgloss.Width(counts)
+	if meterW > 18 {
+		meterW = 18
+	}
+	line := styleDim.Render(skillCount)
+	if meterW >= 4 {
+		line += "   " + meter(frac, meterW) + styleDim.Render(counts)
+	}
+	b.WriteString(line + "\n\n")
 
 	nameW := 20
-	descW := m.width - nameW - 22
-	if descW < 10 {
-		descW = 10
+	if m.width < 70 {
+		nameW = 12 // still fits the longest current skill name at a glance
+	}
+	descW := m.width - nameW - 24
+	if descW < 6 {
+		descW = 6
 	}
 
 	for i, s := range m.skills {
@@ -230,26 +253,46 @@ func (m model) viewList() string {
 		desc := padCells(truncateCells(s.Description, descW), descW)
 		statusCol := m.statusColumn(i)
 
-		line := name + " " + desc + " " + statusCol
+		line := name + " " + desc + " " + styleDivider.Render("│") + " " + statusCol
 		if i == m.cursor {
-			b.WriteString(styleRail.Render("▌") + styleRowSelected.Render(line) + "\n")
+			b.WriteString(styleRail.Render(iconFocus+" ") + styleRowSelected.Render(line) + "\n")
 		} else {
-			b.WriteString(" " + styleRow.Render(line) + "\n")
+			b.WriteString("  " + styleRow.Render(line) + "\n")
 		}
 	}
 
 	if len(m.skills) <= 3 {
-		b.WriteString("\n  " + styleFaint.Render("More skills are on the way — this repo grows over time.") + "\n")
+		note := truncateCells("More skills are on the way — this repo grows over time.", m.width-2)
+		b.WriteString("\n  " + styleFaint.Render(note) + "\n")
 	}
 
-	b.WriteString("\n" + styleFooter.Render("ag agents  co codex  cl claude  he hermes    ● installed  ○ not installed  ! conflict  - agent missing") + "\n")
+	legend := truncateCells("ag agents   co codex   cl claude   he hermes    ● installed   ○ not installed   ! conflict   - agent missing", m.width)
+	b.WriteString("\n" + styleFooter.Render(legend) + "\n")
 
 	if m.message != "" {
 		b.WriteString(renderMessage(m.message, m.messageErr) + "\n")
 	}
 
-	b.WriteString("\n" + styleFooter.Render("↵ manage    r refresh    q quit"))
+	b.WriteString("\n" + keyHints([2]string{"↵", "manage"}, [2]string{"r", "refresh"}, [2]string{"q", "quit"}))
 	return b.String()
+}
+
+// coverage counts installed slots against every slot whose agent is
+// actually present on this machine (an agent that isn't installed at all
+// shouldn't count against the bar).
+func (m model) coverage() (installed, total int) {
+	for _, row := range m.statuses {
+		for _, st := range row {
+			if st == StatusAgentMissing {
+				continue
+			}
+			total++
+			if st == StatusInstalled {
+				installed++
+			}
+		}
+	}
+	return installed, total
 }
 
 func (m model) statusColumn(skillIdx int) string {
@@ -263,42 +306,76 @@ func (m model) statusColumn(skillIdx int) string {
 func (m model) viewManage() string {
 	s := m.skills[m.manage]
 
+	panelWidth := m.width - 6
+	if panelWidth > 78 {
+		panelWidth = 78
+	}
+	// 46 is the smallest panel that still fits a target row's fixed budget
+	// (2 prefix + 8 label + 1 + pathMin + 2 + 18 status) without forcing an
+	// internal word-wrap; below this a genuinely tiny terminal just gets
+	// hard-clamped by clampWidth instead of laid out prettily.
+	if panelWidth < 46 {
+		panelWidth = 46
+	}
+	contentWidth := panelWidth - 4 // stylePanel's own Padding(1, 2)
+
+	installed, total := 0, 0
+	for _, st := range m.statuses[m.manage] {
+		if st == StatusAgentMissing {
+			continue
+		}
+		total++
+		if st == StatusInstalled {
+			installed++
+		}
+	}
+	frac := 0.0
+	if total > 0 {
+		frac = float64(installed) / float64(total)
+	}
+
 	var body strings.Builder
-	body.WriteString(styleName.Render(s.Name) + "\n")
-	body.WriteString(styleDim.Render(truncateCells(s.Description, 64)) + "\n\n")
+	body.WriteString(styleAccent.Render(iconMark) + " " + styleName.Render(s.Name) + "\n")
+	body.WriteString(styleFaint.Render(truncateCells(s.Description, contentWidth)) + "\n")
+	body.WriteString(meter(frac, 16) + styleDim.Render(fmt.Sprintf(" %d/%d installed", installed, total)) + "\n")
+	body.WriteString(styleDivider.Render(strings.Repeat("─", contentWidth)) + "\n\n")
 
 	for j, t := range m.targets {
 		status := m.statuses[m.manage][j]
 		dest, _ := t.dest(s)
 
 		label := padCells(t.Name, 8)
-		path := styleDim.Render(truncateCells(dest, 44))
+		// Budget every fixed piece explicitly so the row can never exceed
+		// contentWidth regardless of which status label lands here - the
+		// longest is Status.String()'s "agent not found" (16 cells), and
+		// every row (focused or not) carries a 2-cell leading glyph/indent.
+		const prefixW, labelW, statusColW = 2, 8, 1 + 1 + len("agent not found")
+		pathW := contentWidth - prefixW - labelW - 1 - 2 - statusColW
+		if pathW < 6 {
+			pathW = 6
+		}
+		path := styleDim.Render(padCells(truncateCells(dest, pathW), pathW))
 		glyph := statusGlyph(status) + " " + statusLabelStyled(status)
 
-		row := label + " " + path + "  " + glyph
+		var row string
 		if j == m.tcursor {
-			row = styleAccent.Render("▸ ") + row
+			row = styleAccent.Bold(true).Render(iconFocus+" ") + styleName.Render(label) + " " + path + "  " + glyph
 		} else {
-			row = "  " + row
+			row = "  " + label + " " + path + "  " + glyph
 		}
 		body.WriteString(row + "\n")
 	}
 
+	body.WriteString("\n")
 	if m.confirming {
 		t := m.targets[m.tcursor]
-		body.WriteString("\n" + styleWarn.Render(fmt.Sprintf("Uninstall %s from %s? y/n", s.Name, t.Name)))
+		warnBar := lipgloss.NewStyle().Foreground(colorWarn).Bold(true).Reverse(true).
+			Render(fmt.Sprintf(" Uninstall %s from %s? ", s.Name, t.Name))
+		body.WriteString(warnBar + "  " + keyHints([2]string{"y", "confirm"}, [2]string{"n", "cancel"}))
 	} else if m.message != "" {
-		body.WriteString("\n" + renderMessage(m.message, m.messageErr))
+		body.WriteString(renderMessage(m.message, m.messageErr))
 	} else {
-		body.WriteString("\n" + styleFooter.Render("space toggle   esc back"))
-	}
-
-	panelWidth := m.width - 6
-	if panelWidth > 76 {
-		panelWidth = 76
-	}
-	if panelWidth < 30 {
-		panelWidth = 30
+		body.WriteString(keyHints([2]string{"space", "toggle"}, [2]string{"esc", "back"}))
 	}
 
 	panel := stylePanel.Width(panelWidth).Render(body.String())
