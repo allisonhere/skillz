@@ -7,43 +7,43 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// A small, restrained palette. Adaptive colors give a reasonable look on
-// both light and dark terminal backgrounds; termenv (underneath lipgloss)
-// already degrades this automatically for NO_COLOR, 256-color, and
-// non-color terminals.
+// Deliberately NOT using lipgloss.AdaptiveColor / custom hex here. Adaptive
+// colors depend on correctly detecting whether the terminal background is
+// light or dark (an OSC 11 query with a fallback guess when that's
+// unsupported), and a wrong guess makes half the palette pick colors tuned
+// for the opposite background - unreadable, not just low-contrast. Standard
+// 4-bit ANSI color numbers sidestep that: the terminal maps them to
+// whatever the user's own theme considers readable against their own
+// background, because that's what the rest of their shell already uses.
+// Faint/Reverse are SGR attributes, not colors, so they carry no background
+// assumption at all - see modern-tui/references/capabilities.md.
 var (
-	colorAccent   = lipgloss.AdaptiveColor{Light: "#0057B7", Dark: "#7DAFFF"}
-	colorGood     = lipgloss.AdaptiveColor{Light: "#0A7A3D", Dark: "#5FD98A"}
-	colorWarn     = lipgloss.AdaptiveColor{Light: "#8A5A00", Dark: "#E6B450"}
-	colorMuted    = lipgloss.AdaptiveColor{Light: "#6B6B6B", Dark: "#8A8A8A"}
-	colorFaint    = lipgloss.AdaptiveColor{Light: "#A0A0A0", Dark: "#555555"}
-	colorFg       = lipgloss.AdaptiveColor{Light: "#1A1A1A", Dark: "#E6E6E6"}
-	colorSelectBg = lipgloss.AdaptiveColor{Light: "#DCE8FF", Dark: "#1E2A44"}
+	colorGood   = lipgloss.Color("2") // green
+	colorWarn   = lipgloss.Color("3") // yellow
+	colorErr    = lipgloss.Color("1") // red
+	colorAccent = lipgloss.Color("6") // cyan
 )
 
 var (
-	styleTitle = lipgloss.NewStyle().Bold(true).Foreground(colorFg)
-	styleDim   = lipgloss.NewStyle().Foreground(colorMuted)
-	styleFaint = lipgloss.NewStyle().Foreground(colorFaint).Italic(true)
-	styleGood  = lipgloss.NewStyle().Foreground(colorGood)
-	styleWarn  = lipgloss.NewStyle().Foreground(colorWarn)
+	styleTitle  = lipgloss.NewStyle().Bold(true)
+	styleDim    = lipgloss.NewStyle().Faint(true)
+	styleFaint  = lipgloss.NewStyle().Faint(true).Italic(true)
+	styleGood   = lipgloss.NewStyle().Foreground(colorGood)
+	styleWarn   = lipgloss.NewStyle().Foreground(colorWarn)
 	styleAccent = lipgloss.NewStyle().Foreground(colorAccent)
-	styleName   = lipgloss.NewStyle().Bold(true).Foreground(colorFg)
+	styleName   = lipgloss.NewStyle().Bold(true)
 
-	styleRow = lipgloss.NewStyle().PaddingLeft(2)
-	styleRowSelected = lipgloss.NewStyle().
-				PaddingLeft(1).
-				Background(colorSelectBg).
-				Foreground(colorFg)
-	styleRail = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+	styleRow         = lipgloss.NewStyle().PaddingLeft(2)
+	styleRowSelected = lipgloss.NewStyle().PaddingLeft(1).Reverse(true).Bold(true)
+	styleRail        = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
 
 	stylePanel = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(colorAccent).
 			Padding(1, 2)
 
-	styleFooter = lipgloss.NewStyle().Foreground(colorFaint)
-	styleErr    = lipgloss.NewStyle().Foreground(colorWarn).Bold(true)
+	styleFooter = lipgloss.NewStyle().Faint(true)
+	styleErr    = lipgloss.NewStyle().Foreground(colorErr).Bold(true)
 )
 
 // statusGlyph renders a target's status as a single, colored, fixed-width
