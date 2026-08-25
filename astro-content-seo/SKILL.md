@@ -1,6 +1,13 @@
 ---
 name: astro-content-seo
-description: Publishing and SEO checklist for the user's Astro content sites — thebeautyanswer.com and cookingfix ("sister sites"), and any similar Astro + Tailwind + Preact content-collection site the user builds. Use this whenever adding or editing content entries (answers, recipes, articles), touching astro.config.mjs/content schema, generating images or social assets, or preparing a deploy — these sites follow a specific AI-content-generation + SEO-audit + image-generation pipeline that isn't obvious from a single file in isolation.
+description: Use when adding/editing content, touching the content schema, generating images, or deploying on the user's Astro content sites (thebeautyanswer.com, cookingfix) — these share one AI-generation + SEO-audit + image pipeline that a single file doesn't reveal.
+version: 1.0.0
+license: MIT
+platforms: [linux, macos]
+metadata:
+  hermes:
+    tags: [astro, seo, content, tailwind, preact, static-site, pinterest]
+    category: productivity
 ---
 
 # Astro content-site publishing & SEO checklist

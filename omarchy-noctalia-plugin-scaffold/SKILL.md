@@ -1,6 +1,13 @@
 ---
 name: omarchy-noctalia-plugin-scaffold
-description: Scaffold and workflow conventions for the user's Omarchy/Noctalia Linux desktop plugin projects (launcher-installer, omarchy-noctalia, tablet, screen-widget) — Python-based tools that plug into the Noctalia shell / Omarchy Hyprland setup, often with a systemd service and/or a Quickshell/Noctalia plugin.toml. Use this whenever creating a new Linux desktop utility, Hyprland/Noctalia plugin, or system tray/widget tool for the user, or editing one of the existing ones.
+description: Use when creating or editing an Omarchy/Noctalia desktop tool or Hyprland widget (launcher-installer, tablet, screen-widget) — Python core plus a Luau Noctalia plugin, systemd user units, and the plugin.toml/translations contract.
+version: 1.0.0
+license: MIT
+platforms: [linux]
+metadata:
+  hermes:
+    tags: [omarchy, noctalia, hyprland, quickshell, luau, python, systemd, linux-desktop]
+    category: devops
 ---
 
 # Omarchy/Noctalia plugin scaffold

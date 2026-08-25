@@ -1,6 +1,13 @@
 ---
 name: tide-tui-ecosystem
-description: Cross-repo awareness for the user's "Tide" family of terminal UI apps built on Bubble Tea and Lipgloss — tide (RSS reader), tidemail (email client), tideui (shared TUI toolkit), and ripple (text editor component). Use this whenever editing one of these repos, especially when touching shared/duplicated code (e.g. ansi_wave.go), touching anything tideui exposes, or preparing a release — these repos share code and conventions in ways that aren't visible from inside a single repo.
+description: Use when editing any Tide-family terminal app (tide, tidemail, tideui, ripple, TideFTP, whatthedock, zellit) — cross-repo facts these separate repos can't show you: what's duplicated, what tideui already provides, and per-repo release shape.
+version: 1.0.0
+license: MIT
+platforms: [linux, macos]
+metadata:
+  hermes:
+    tags: [tui, bubble-tea, lipgloss, go, tideui, cross-repo]
+    category: software-development
 ---
 
 # Tide TUI ecosystem

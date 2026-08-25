@@ -1,6 +1,13 @@
 ---
 name: go-cli-workflow
-description: Build/test/lint/release checklist for the user's Go CLI repos (assho, z13ctl, z13control, murmur, omarkey, tidemail, and similar single- or multi-binary Go command-line tools under github.com/allisonhere). Use this whenever working in one of these repos and about to build, test, commit, push, or cut a release — especially before touching version strings, Makefile targets, or tag-based release flow. Also use when scaffolding a brand new Go CLI repo, since these conventions are the user's default starting point.
+description: Use when building, testing, releasing, or scaffolding one of the user's Go CLI repos (assho, z13ctl, z13control, murmur, omarkey, tidemail) — covers the preflight command order, tag-based versioning gotchas, and multi-module traps.
+version: 1.0.0
+license: MIT
+platforms: [linux, macos]
+metadata:
+  hermes:
+    tags: [go, cli, makefile, goreleaser, versioning, release]
+    category: software-development
 ---
 
 # Go CLI workflow
