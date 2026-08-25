@@ -69,6 +69,7 @@ usage() {
 ${c_bold}install-skill${c_reset} - install skills from this repo into local agent skill directories
 
 Usage:
+  install-skill                          # at an interactive prompt: same as --tui
   install-skill <skill> [<skill> ...] [options]
   install-skill --list
   install-skill --tui
@@ -140,8 +141,16 @@ do_list=0
 do_tui=0
 
 if [ $# -eq 0 ]; then
-  usage
-  exit 1
+  if [ -t 0 ] && [ -t 1 ]; then
+    # Bare `install-skill` at an interactive prompt: launch the picker
+    # instead of just printing usage. Piped/scripted/non-TTY invocations
+    # (no args, stdin or stdout redirected) still fall through to usage
+    # below, so nothing that depends on the old fail-fast behavior breaks.
+    do_tui=1
+  else
+    usage
+    exit 1
+  fi
 fi
 
 while [ $# -gt 0 ]; do

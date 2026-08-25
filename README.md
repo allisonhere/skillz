@@ -82,7 +82,14 @@ it), you can drop the leading path and just type `install-skill modern-tui`.
 
 ```bash
 install-skill --tui
+# or, at an interactive prompt, just:
+install-skill
 ```
+
+Typing `install-skill` with no arguments launches the picker automatically
+when you're at a real prompt (both stdin and stdout are a TTY). Piped or
+scripted invocations with no args still get the old behavior — usage text
+and a non-zero exit — so nothing that depends on that fails silently.
 
 This is the same installer, just interactive — a little Bubble Tea app (built
 with `modern-tui`'s own house style, naturally) that lists every skill in the
