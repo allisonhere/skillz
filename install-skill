@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+#
+# install-skill - install skills from this repo into local agent skill directories.
+#
+# Usage:
+#   install-skill <skill> [<skill> ...] [--target agents|codex|claude|hermes] [--all] [--force]
+#   install-skill --list
+#   install-skill --help
+#
+# Run from anywhere; the script resolves its own location to find the repo.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Path resolution (works regardless of cwd or how the script is invoked)
+# ---------------------------------------------------------------------------
+resolve_script_path() {
+  local src="${BASH_SOURCE[0]}"
+  while [ -h "$src" ]; do
+    local dir
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    [[ "$src" != /* ]] && src="$dir/$src"
+  done
+  cd -P "$(dirname "$src")" && pwd
+}
+
+REPO_DIR="$(resolve_script_path)"
+
+# ---------------------------------------------------------------------------
+# Known install targets.
+#   name:base_dir:mode
+#     mode = "flat"   -> <base_dir>/<skill-name> (symlink), simple directory scan
+#     mode = "hermes" -> <base_dir>/<category>/<skill-name> (copy), curator-managed
+# ---------------------------------------------------------------------------
+TARGET_NAMES=(agents codex claude hermes)
+target_base() {
+  case "$1" in
+    agents) echo "$HOME/.agents/skills" ;;
+    codex)  echo "$HOME/.codex/skills" ;;
+    claude) echo "$HOME/.claude/skills" ;;
+    hermes) echo "$HOME/.hermes/skills" ;;
+    *) return 1 ;;
+  esac
+}
+target_mode() {
+  case "$1" in
+    hermes) echo "hermes" ;;
+    *) echo "flat" ;;
+  esac
+}
+# Targets included by default / by --all. hermes is opt-in only (see README):
+# its skills tree is managed by a curator process (ledger/manifest/usage
+# tracking) and manually dropping files into it is riskier than the flat,
+# plain-directory-scan targets below.
+DEFAULT_TARGETS=(agents codex claude)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+c_bold=$'\033[1m'; c_green=$'\033[32m'; c_yellow=$'\033[33m'; c_red=$'\033[31m'; c_reset=$'\033[0m'
+info()  { printf '%s\n' "$*"; }
+ok()    { printf '%s✔%s %s\n' "$c_green" "$c_reset" "$*"; }
+warn()  { printf '%s⚠%s %s\n' "$c_yellow" "$c_reset" "$*"; }
+err()   { printf '%s✘%s %s\n' "$c_red" "$c_reset" "$*" >&2; }
+
+usage() {
+  cat <<EOF
+${c_bold}install-skill${c_reset} - install skills from this repo into local agent skill directories
+
+Usage:
+  install-skill <skill> [<skill> ...] [options]
+  install-skill --list
+  install-skill --help
+
+Options:
+  --target <name>   Install only to this target. Repeatable. One of:
+                       agents  -> ~/.agents/skills/<skill>        (symlink)
+                       codex   -> ~/.codex/skills/<skill>          (symlink)
+                       claude  -> ~/.claude/skills/<skill>         (symlink)
+                       hermes  -> ~/.hermes/skills/<cat>/<skill>   (copy, opt-in)
+  --all             Install to every default target (agents, codex, claude).
+                    Does NOT include hermes; pass --target hermes explicitly.
+  --force           Replace an existing non-matching install. The previous
+                    path is moved aside to <dest>.bak.<timestamp> first,
+                    never deleted outright.
+  --list            List skills available in this repo and where each one
+                    is currently installed.
+  --help            Show this help.
+
+Examples:
+  install-skill modern-tui
+  install-skill modern-tui another-skill
+  install-skill modern-tui --target codex
+  install-skill modern-tui --all
+  install-skill modern-tui --target hermes
+  install-skill --list
+EOF
+}
+
+# List skill directories in the repo (top-level dirs containing SKILL.md)
+list_repo_skills() {
+  local d
+  for d in "$REPO_DIR"/*/; do
+    [ -f "${d}SKILL.md" ] || continue
+    basename "$d"
+  done
+}
+
+skill_description() {
+  local skill_md="$1"
+  awk -F': ' '
+    /^description:/ { $1=""; sub(/^: /,""); print; exit }
+  ' "$skill_md"
+}
+
+# Best-effort extraction of metadata.hermes.category from SKILL.md frontmatter.
+hermes_category() {
+  local skill_md="$1"
+  awk '
+    /^metadata:/ { in_meta=1; next }
+    in_meta && /^  hermes:/ { in_hermes=1; next }
+    in_hermes && /^    category:/ { sub(/^    category: */,""); print; exit }
+    in_meta && /^[a-zA-Z]/ { exit }
+  ' "$skill_md"
+}
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+skills=()
+targets=()
+force=0
+do_list=0
+
+if [ $# -eq 0 ]; then
+  usage
+  exit 1
+fi
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --list) do_list=1; shift ;;
+    --all) targets=("${DEFAULT_TARGETS[@]}"); shift ;;
+    --force) force=1; shift ;;
+    --target)
+      [ $# -ge 2 ] || { err "--target requires a value"; exit 1; }
+      IFS=',' read -ra parts <<< "$2"
+      for t in "${parts[@]}"; do targets+=("$t"); done
+      shift 2
+      ;;
+    --*)
+      err "Unknown option: $1"
+      usage
+      exit 1
+      ;;
+    *)
+      skills+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Validate targets
+for t in "${targets[@]:-}"; do
+  [ -z "$t" ] && continue
+  if ! target_base "$t" >/dev/null 2>&1; then
+    err "Unknown target: $t (expected one of: ${TARGET_NAMES[*]})"
+    exit 1
+  fi
+done
+
+# ---------------------------------------------------------------------------
+# --list
+# ---------------------------------------------------------------------------
+if [ "$do_list" -eq 1 ]; then
+  mapfile -t all_skills < <(list_repo_skills)
+  if [ "${#all_skills[@]}" -eq 0 ]; then
+    warn "No skills found in $REPO_DIR (looked for */SKILL.md)"
+    exit 0
+  fi
+  info "${c_bold}Skills available in $REPO_DIR:${c_reset}"
+  for s in "${all_skills[@]}"; do
+    desc="$(skill_description "$REPO_DIR/$s/SKILL.md")"
+    printf '\n%s%s%s\n' "$c_bold" "$s" "$c_reset"
+    [ -n "$desc" ] && printf '  %s\n' "$desc"
+    for t in "${TARGET_NAMES[@]}"; do
+      base="$(target_base "$t")"
+      mode="$(target_mode "$t")"
+      if [ "$mode" = "hermes" ]; then
+        cat="$(hermes_category "$REPO_DIR/$s/SKILL.md")"
+        [ -z "$cat" ] && cat="general"
+        dest="$base/$cat/$s"
+      else
+        dest="$base/$s"
+      fi
+      if [ -L "$dest" ]; then
+        target_of_link="$(readlink -f "$dest" 2>/dev/null || true)"
+        if [ "$target_of_link" = "$REPO_DIR/$s" ]; then
+          printf '  [%s] %-8s installed (symlink -> repo)\n' "✔" "$t"
+        else
+          printf '  [%s] %-8s symlink present, points elsewhere: %s\n' "!" "$t" "$dest"
+        fi
+      elif [ -e "$dest" ]; then
+        printf '  [%s] %-8s present (not a symlink): %s\n' "!" "$t" "$dest"
+      elif [ -d "$base" ] || [ -d "$(dirname "$base")" ]; then
+        printf '  [%s] %-8s not installed\n' " " "$t"
+      else
+        printf '  [%s] %-8s agent not detected on this machine\n' "-" "$t"
+      fi
+    done
+  done
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Install
+# ---------------------------------------------------------------------------
+if [ "${#skills[@]}" -eq 0 ]; then
+  err "No skill names given. Use --list to see available skills."
+  exit 1
+fi
+
+if [ "${#targets[@]}" -eq 0 ]; then
+  targets=("${DEFAULT_TARGETS[@]}")
+fi
+
+exit_code=0
+
+for skill in "${skills[@]}"; do
+  skill_dir="$REPO_DIR/$skill"
+  if [ ! -d "$skill_dir" ]; then
+    err "Skill '$skill' not found in $REPO_DIR"
+    mapfile -t available < <(list_repo_skills)
+    info "Available skills: ${available[*]:-none}"
+    exit_code=1
+    continue
+  fi
+  if [ ! -f "$skill_dir/SKILL.md" ]; then
+    err "Skill '$skill' is missing SKILL.md ($skill_dir) - skipping"
+    exit_code=1
+    continue
+  fi
+
+  info ""
+  info "${c_bold}== $skill ==${c_reset}"
+
+  for t in "${targets[@]}"; do
+    base="$(target_base "$t")"
+    mode="$(target_mode "$t")"
+
+    if [ "$mode" = "hermes" ]; then
+      cat="$(hermes_category "$skill_dir/SKILL.md")"
+      [ -z "$cat" ] && cat="general"
+      dest_dir="$base/$cat"
+      dest="$dest_dir/$skill"
+    else
+      dest_dir="$base"
+      dest="$dest_dir/$skill"
+    fi
+
+    # Skip targets for agents that aren't installed on this machine at all,
+    # unless the user explicitly asked for this target.
+    agent_root="$(dirname "$base")"
+    explicit_target=0
+    for et in "${targets[@]}"; do [ "$et" = "$t" ] && explicit_target=1; done
+    if [ ! -d "$agent_root" ]; then
+      if [ "${#targets[@]}" -gt 1 ] && [ "$explicit_target" -eq 1 ] && printf '%s\n' "${DEFAULT_TARGETS[@]}" | grep -qx "$t"; then
+        warn "$t: agent directory $agent_root not found on this machine - skipping"
+        continue
+      elif [ "${#targets[@]}" -eq 1 ]; then
+        err "$t: agent directory $agent_root not found on this machine"
+        exit_code=1
+        continue
+      else
+        warn "$t: agent directory $agent_root not found on this machine - skipping"
+        continue
+      fi
+    fi
+
+    mkdir -p "$dest_dir"
+
+    if [ -L "$dest" ]; then
+      current_target="$(readlink -f "$dest" 2>/dev/null || true)"
+      if [ "$current_target" = "$skill_dir" ]; then
+        ok "$t: already installed -> $dest"
+        continue
+      fi
+      if [ "$force" -eq 1 ]; then
+        backup="${dest}.bak.$(date +%Y%m%d%H%M%S)"
+        mv "$dest" "$backup"
+        warn "$t: existing symlink moved to $backup"
+      else
+        warn "$t: $dest is a symlink pointing elsewhere ($current_target). Use --force to replace."
+        exit_code=1
+        continue
+      fi
+    elif [ -e "$dest" ]; then
+      if [ "$force" -eq 1 ]; then
+        backup="${dest}.bak.$(date +%Y%m%d%H%M%S)"
+        mv "$dest" "$backup"
+        warn "$t: existing path moved to $backup"
+      else
+        warn "$t: $dest already exists and is not a symlink to this repo. Not touching it. Use --force to replace (moves it aside first)."
+        exit_code=1
+        continue
+      fi
+    fi
+
+    if [ "$mode" = "hermes" ]; then
+      cp -a "$skill_dir" "$dest"
+      ok "$t: copied -> $dest (category: $cat)"
+      warn "$t: hermes skills are curator-managed; verify with the hermes skills UI/command that '$skill' is recognized."
+    else
+      ln -s "$skill_dir" "$dest"
+      ok "$t: symlinked -> $dest"
+    fi
+  done
+done
+
+exit "$exit_code"
