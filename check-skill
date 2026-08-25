@@ -51,8 +51,11 @@ def check_skill(skill, errors, warnings):
             f"on boilerplate: {desc[:HERMES_DESC_TRUNCATE]!r}"
         )
 
-    # references linked from SKILL.md must exist
-    linked = set(re.findall(r"(?:references|templates|scripts)/[\w.-]+\.\w+", text))
+    # references linked from SKILL.md must exist. Deliberately just
+    # references/templates, not scripts/ - a skill's prose can legitimately
+    # mention a scripts/foo.mjs path that lives in the *target* project it's
+    # documenting (see astro-content-seo), not a file the skill itself ships.
+    linked = set(re.findall(r"(?:references|templates)/[\w.-]+\.\w+", text))
     for rel in sorted(linked):
         if not os.path.isfile(os.path.join(d, rel)):
             errors.append(f"{skill}: SKILL.md links missing file {rel}")
