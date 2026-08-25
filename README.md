@@ -1,13 +1,15 @@
 # skillz
 
-Personal repository of reusable AI agent skills, written once and installed into
-whichever local coding agents support them.
+My personal collection of AI agent skills — I write each one once here and install
+it into whichever local coding agents can use it (Claude Code, Codex, Hermes, and
+anything else that shows up later).
 
 ## Layout
 
 ```text
 skillz/
 ├── install-skill        # installer script (see below)
+├── check-skill           # validator script (see below)
 ├── README.md
 ├── modern-tui/
 │   ├── SKILL.md          # required: name + description frontmatter
@@ -18,15 +20,15 @@ skillz/
     └── ...
 ```
 
-Each top-level directory containing a `SKILL.md` is a skill. There's no registry
-file to maintain — the installer discovers skills by scanning for `*/SKILL.md`.
+A skill is just any top-level directory with a `SKILL.md` in it. There's no
+registry to keep in sync — the installer finds skills by scanning for `*/SKILL.md`.
 
 ## Adding a new skill
 
-Create a new top-level directory with a `SKILL.md` (YAML frontmatter with at least
-`name` and `description`, then the skill body). Anything else in the directory
-(`references/`, `templates/`, scripts, etc.) is carried along automatically —
-the whole directory is the installable unit.
+Make a directory, write a `SKILL.md` with `name` and `description` in the
+frontmatter, and put the skill body underneath. Anything else you drop in
+alongside it — `references/`, `templates/`, scripts, whatever — comes along for
+free, since the whole directory is what gets installed.
 
 ```bash
 mkdir another-skill
@@ -37,106 +39,106 @@ $EDITOR another-skill/SKILL.md
 
 ```bash
 ./check-skill              # all skills
-./check-skill modern-tui   # one skill
+./check-skill modern-tui   # just one
 ```
 
-Checks that frontmatter parses and carries `name`/`description`, that `name` matches the
-directory, that every `references/…` path named in `SKILL.md` exists (and that every
-reference file is actually linked), that markdown code fences are balanced, and that the
-description does not waste Hermes' 57-character skill-index window on boilerplate.
-Exit code is non-zero on errors; warnings do not fail.
+It checks the boring stuff so I don't have to: frontmatter actually parses and
+has `name`/`description`, `name` matches the directory it's in, every
+`references/…` path mentioned in `SKILL.md` really exists (and vice versa — no
+orphaned reference files), markdown fences are balanced, and the description
+doesn't blow Hermes' 57-character skill-index preview on boilerplate. Exits
+non-zero on errors; warnings won't fail the run.
 
 ## Installing skills
 
-Run `install-skill` from anywhere — it resolves its own location, so it doesn't
-matter what your current directory is.
+Run `install-skill` from wherever — it figures out its own location, so your
+current directory doesn't matter.
 
 ```bash
-# Install one skill to all default targets (agents, codex, claude)
+# Install one skill everywhere (agents, codex, claude)
 ~/Projects/skillz/install-skill modern-tui
 
-# Install several at once
+# Install a few at once
 ~/Projects/skillz/install-skill modern-tui another-skill
 
-# Install to a specific agent only
+# Just one target
 ~/Projects/skillz/install-skill modern-tui --target codex
 
-# Explicit "everything" (same set as the default, spelled out)
+# Same as the default, just spelled out
 ~/Projects/skillz/install-skill modern-tui --all
 
-# List what's in the repo and where each skill is currently installed
+# See what's here and where it's already installed
 ~/Projects/skillz/install-skill --list
 
 # Help
 ~/Projects/skillz/install-skill --help
 ```
 
-Adding `~/Projects/skillz` to your `PATH` (or symlinking `install-skill` onto
-your `PATH`) lets you drop the leading path and just run `install-skill modern-tui`.
+If you put `~/Projects/skillz` on your `PATH` (or symlink `install-skill` onto
+it), you can drop the leading path and just type `install-skill modern-tui`.
 
-## How installs behave
+## How installs actually work
 
-`~/Projects/skillz` is the canonical, editable source. Installed skills are
-**symlinks** back into this repo wherever the target agent just does a plain
-directory scan for `*/SKILL.md` — so an edit here shows up for every agent
-immediately, with nothing to re-run.
+`~/Projects/skillz` is the source of truth. For any target that just scans a
+directory for `*/SKILL.md`, the installer symlinks straight back into this
+repo — so editing a skill here shows up everywhere it's installed immediately,
+no reinstall needed.
 
 | Target    | Destination                              | Method  | Notes |
 |-----------|-------------------------------------------|---------|-------|
-| `agents`  | `~/.agents/skills/<skill>`                | symlink | shared/generic skills directory used across tools |
-| `codex`   | `~/.codex/skills/<skill>` (`$CODEX_HOME`) | symlink | Codex's own `skill-installer` does a plain `os.listdir` + `isdir` scan, which follows symlinks |
-| `claude`  | `~/.claude/skills/<skill>`                | symlink | Claude Code personal skills directory |
+| `agents`  | `~/.agents/skills/<skill>`                | symlink | shared/generic skills directory a few tools already read from |
+| `codex`   | `~/.codex/skills/<skill>` (`$CODEX_HOME`) | symlink | Codex's own installer does a plain directory scan, which follows symlinks fine |
+| `claude`  | `~/.claude/skills/<skill>`                | symlink | Claude Code's personal skills directory |
 | `hermes`  | `~/.hermes/skills/<category>/<skill>`     | copy    | opt-in only, see below |
 
-The installer never deletes anything. If a destination already exists and
-isn't already a correct symlink into this repo, it leaves it alone and tells
-you to pass `--force` — which moves the old path aside to
-`<dest>.bak.<timestamp>` before installing, rather than overwriting it.
+The installer never deletes anything on its own. If something's already sitting
+at the destination and isn't already a correct symlink into this repo, it
+leaves it alone and tells you to pass `--force` — which moves the old thing
+aside to `<dest>.bak.<timestamp>` rather than clobbering it.
 
-Re-running `install-skill` on an already-installed skill is a no-op (it
-detects the existing correct symlink and reports "already installed").
+Running `install-skill` again on something already installed is a no-op; it
+notices the correct symlink is already there and just says so.
 
-### Hermes is opt-in and copy-based, not symlinked
+### Hermes is the one exception — opt-in, and it copies instead of linking
 
-Hermes' `~/.hermes/skills/` tree is actively managed by a curator process
-(`.curator_ledger.jsonl`, `.bundled_manifest`, `.usage.json`) and organized
-into categories (e.g. `software-development/`). Because of that, the
-installer:
+Hermes manages its own `~/.hermes/skills/` tree with a curator process
+(`.curator_ledger.jsonl`, `.bundled_manifest`, `.usage.json`) and files things
+into categories like `software-development/`. I didn't want the installer
+messing with that automatically, so:
 
-- only touches it when you explicitly pass `--target hermes` (it's excluded
-  from `--all` and from the no-flags default),
-- **copies** the skill directory into
-  `~/.hermes/skills/<category>/<skill>` instead of symlinking, using the
-  `metadata.hermes.category` field from the skill's `SKILL.md` frontmatter
-  (falls back to `general` if absent),
-- never edits `~/.hermes/config.yaml` — enabling Hermes' external skill
-  directories feature (so it could read `~/.agents/skills` directly) is a
-  manual config change left for you to make if you want it.
+- it only touches Hermes when you pass `--target hermes` explicitly — it's
+  left out of `--all` and out of the no-flags default,
+- it copies the skill directory into `~/.hermes/skills/<category>/<skill>`
+  rather than symlinking, sorting by the `metadata.hermes.category` field in
+  the skill's frontmatter (or `general` if that's missing),
+- it never touches `~/.hermes/config.yaml`. If you want Hermes reading
+  `~/.agents/skills` directly instead, that's a config change you make
+  yourself.
 
-Because it's a copy, re-editing the skill in this repo won't update the
-Hermes copy automatically — re-run `install-skill <skill> --target hermes`
-after changes, or verify recognition with Hermes' own skill list/refresh
-command.
+Because it's a copy, editing a skill here won't update the Hermes side by
+itself — rerun `install-skill <skill> --target hermes` after making changes,
+or check in with Hermes' own skill list/refresh.
 
-## Updating the repository
+## Updating the repo
 
 ```bash
 cd ~/Projects/skillz
 git pull
 ```
 
-Since installs are symlinks, a `git pull` that changes an existing skill's
-files is immediately live for every symlinked target with no reinstall step.
-A `git pull` that adds a brand-new skill directory still needs one
-`install-skill <new-skill>` to create its symlinks.
+Since installs are symlinks, pulling changes to an existing skill is live
+everywhere instantly — nothing to reinstall. If the pull brings in a brand
+new skill directory, that one still needs a one-time
+`install-skill <new-skill>` to get its symlinks created.
 
 ## Supported agents / targets
 
-- **Codex** — confirmed: its skill directory is a flat `$CODEX_HOME/skills/<name>/SKILL.md`
-  scan that follows symlinks.
-- **Claude Code** — confirmed: personal skills load from `~/.claude/skills/<name>/SKILL.md`;
-  Claude Code picked up the symlinked `modern-tui` immediately after install.
-- **`~/.agents/skills`** — a shared skills directory already used as an external
-  skill source by other tools on this machine (e.g. referenced in Hermes' own
-  config as an example external directory); installed the same way as Codex/Claude.
-- **Hermes** — supported but opt-in/copy-based; see above.
+- **Codex** — works: `$CODEX_HOME/skills/<name>/SKILL.md` is a flat scan that
+  follows symlinks without complaint.
+- **Claude Code** — works: personal skills load from
+  `~/.claude/skills/<name>/SKILL.md`, and it picked up a symlinked skill the
+  moment it was installed.
+- **`~/.agents/skills`** — a shared directory a few tools on this machine
+  already treat as an external skill source (Hermes' own config even mentions
+  it as an example). Installed the same way as Codex/Claude.
+- **Hermes** — works, but it's the opt-in/copy-based path described above.
