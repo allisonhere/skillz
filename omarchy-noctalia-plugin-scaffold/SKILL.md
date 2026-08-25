@@ -57,7 +57,11 @@ description = "Five configurable workspace indicators for Hyprland."
 tags = ["bar", "workspaces", "hyprland"]
 dependencies = ["hyprctl"]             # external commands the widget shells out to
 
-[[setting]]
+[[widget]]                             # REQUIRED: registers the widget with the shell
+id = "workspaces"
+entry = "widget.luau"
+
+[[setting]]                            # optional — tablet's manifest has none
 key = "icon_layout"
 type = "select"
 label_key = "settings.icon_layout.label"
@@ -74,6 +78,9 @@ Rules that follow:
 - `plugin_api` is a hard compatibility gate. Read the installed shell's current value
   before inventing one — copy it from a working plugin
   (`grep plugin_api ~/.config/noctalia/plugins/*/plugin.toml`) rather than guessing.
+- `[[widget]]` (`id` + `entry = "widget.luau"`) is what registers the widget. Omit it and
+  the plugin loads with nothing on the bar. Both `screen-widget` and `tablet` declare
+  exactly one.
 - Every user-visible string is a `*_key` resolved from `translations/en.json`. Don't
   inline English in `plugin.toml`; add the key to the translations file in the same
   change or the UI shows a raw key.

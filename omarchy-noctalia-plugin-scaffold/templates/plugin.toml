@@ -14,6 +14,13 @@ description = "One line describing what this puts on the bar."
 tags = ["bar", "hyprland"]
 dependencies = ["hyprctl"]       # external commands the widget shells out to
 
+# [[widget]] is what actually registers the widget with the shell — without it the
+# plugin loads but nothing appears. Both screen-widget and tablet have exactly one.
+[[widget]]
+id = "my-widget"
+entry = "widget.luau"
+
+# [[setting]] blocks are optional (tablet's manifest has none).
 [[setting]]
 key = "display_mode"
 type = "select"                  # select | bool | string | int (match an existing plugin)
