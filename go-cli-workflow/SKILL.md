@@ -27,8 +27,33 @@ go test ./... -race
 golangci-lint run
 ```
 
-If a `Makefile` exists (it almost always does), prefer its targets over raw commands —
-`make lint`, `make test`, `make cover` — since they sometimes wrap extra setup.
+If a `Makefile` exists, prefer its targets over raw commands — they sometimes wrap extra
+setup. **But don't assume one exists.** Verified across the local clones: `assho`,
+`z13ctl`, `z13control`, and `whatthedock` have a Makefile; `tidemail`, `tideui`,
+`tideftp`, `pinforge`, `tide`, `ripple`, `murmur`, and `omarkey` do not. And where one
+exists the targets may not be what you expect — `assho/Makefile` exposes
+`all build install uninstall run clean` with **no** `lint`, `test`, or `cover` target.
+Check first:
+
+```sh
+grep -E '^[a-z][a-z-]*:' Makefile | cut -d: -f1
+```
+
+`scripts/preflight.sh` in this skill runs the whole checklist above, including the extra
+module loop described below, and lists the Makefile targets it found.
+
+**Pitfall — bogus `typecheck` errors from golangci-lint.** If `golangci-lint run` fails
+with stdlib errors you didn't cause, e.g.
+
+```text
+/usr/lib/go/src/crypto/internal/randutil/randutil.go:11:2: could not import math/rand/v2
+  (method must have no type parameters) (typecheck)
+```
+
+the linter binary was built against a different Go than the installed toolchain
+(`golangci-lint --version` vs `go version`). Reinstall golangci-lint for the current Go
+before believing the failure — `go build`/`go vet`/`go test` passing while only
+`typecheck` complains about files under `/usr/lib/go` is the tell.
 
 ## Versioning
 
@@ -38,12 +63,25 @@ Version comes from git tags via:
 git describe --tags --match 'v*' --always --dirty
 ```
 
-The `--match 'v*'` is load-bearing, not decorative: repos like z13ctl also carry an
-`api/vX.Y.Z` tag series for a separate submodule. Without the filter, `git describe`
-(and goreleaser, if unconfigured) picks up the newest tag regardless of series and
-mis-versions the main binary — it'll report `api/v1.1.7` as its own version. If you see
-a `.goreleaser.yml`, check it has a matching `git.ignore_tags: ["api/*"]` (or equivalent)
-whenever an `api/` submodule tag series exists alongside main `v*` tags.
+The `--match 'v*'` filter is load-bearing where a repo carries a second tag series.
+`z13ctl` is the case that motivated it: it has an `api/` submodule (`api/go.mod`) and a
+`.goreleaser.yml`. Without the filter, `git describe` (and goreleaser, if unconfigured)
+picks the newest tag regardless of series and mis-versions the main binary — reporting
+something like `api/v1.1.7` as its own version.
+
+Confirm the situation in the repo you're in rather than assuming:
+
+```sh
+git tag --list | sed 's/[0-9].*//' | sort -u     # which tag series exist
+ls api/go.mod 2>/dev/null && echo "separate module present"
+grep -n 'ignore_tags' .goreleaser.yml 2>/dev/null
+```
+
+Where an `api/*` series exists alongside `v*`, `.goreleaser.yml` needs
+`git.ignore_tags: ["api/*"]` (or equivalent) or the release mis-versions the main binary.
+
+Note `z13ctl` is **local-only** — it is not on `github.com/allisonhere`, so `gh` lookups
+for it will 404.
 
 Version is injected via ldflags, typically:
 
@@ -62,19 +100,33 @@ targets if they already loop over both modules (check first; some do, some don't
 
 ## Releases
 
-Cut from `v*` git tags. Either:
-- `goreleaser release` (check for `.goreleaser.yml`), or
-- a plain `deploy.sh` / `install.sh` pair that builds and copies the binary.
+Per-repo, verified — do not generalize:
 
-Don't assume which one a given repo uses — check for `.goreleaser.yml` before reaching
-for goreleaser commands.
+| Repo | Release mechanism |
+|------|-------------------|
+| z13ctl | `.goreleaser.yml` (the only local repo with one) + Makefile |
+| tide | `release.sh` + `install.sh` at root |
+| murmur | `install.sh` only |
+| ripple, omarkey | neither — `ripple` is an importable component, not a shipped binary |
+| assho, z13control, whatthedock | Makefile (`make install` → `/usr/local/bin`, man pages under `/usr/local/share/man/man1`, via `sudo`, never on build) |
+
+Check before reaching for goreleaser:
+
+```sh
+ls .goreleaser.y*ml release.sh install.sh Makefile 2>/dev/null
+```
 
 ## Architecture docs
 
-Most of these repos keep a `CLAUDE.md` at the root documenting package layout and key
-flows (see z13ctl's for the fullest example). When a change is structural — new
-package, moved responsibility, new subcommand — update that doc in the same change,
-not as an afterthought. It's the thing future sessions (including yours) read first.
+`z13ctl` is the repo with a root `CLAUDE.md` (and a `CONTRIBUTING.md`); `tidemail` keeps
+`CONTRIBUTING.md` + `STATUS.md`; `tide` keeps `STATUS.md`, `PLAN.md`, `folders.md`, and a
+`.codex` directory. Most of the others carry only a README.
+
+The rule still holds: when a change is structural — new package, moved responsibility,
+new subcommand — update whichever of those docs the repo actually has, in the same
+change, not as an afterthought. It's the thing future sessions (including yours) read
+first. Don't create a `CLAUDE.md` in a repo that never had one — match the repo's
+existing convention.
 
 ## Conventions worth preserving
 
