@@ -17,6 +17,15 @@ Preact islands for interactivity, Tailwind for styling, content stored as Conten
 Collections with a Zod schema, PHP-backed admin/contact endpoints under `public/`.
 New sites the user builds in this style will likely follow the same shape.
 
+Neither site is necessarily cloned on the current machine. Both are **private** repos
+under `allisonhere` (`thebeautyanswer.com`, `cookingfix`) — inspect without cloning:
+
+```bash
+gh api repos/allisonhere/thebeautyanswer.com/contents/scripts --jq '.[].name'
+gh api repos/allisonhere/cookingfix/contents/package.json --jq '.content' | base64 -d | jq .scripts
+```
+
+
 ## Content model
 
 Content lives under `src/content/<collection>/` as markdown/YAML frontmatter, validated
@@ -28,28 +37,53 @@ wrong.
 
 ## AI content generation
 
-New content is generated from a prompt template (`prompts/answer-generation.md` or
-equivalent) via a script (`scripts/generate-answers.mjs` or equivalent), not written
-by hand entry-by-entry. If asked to add a batch of new content, check for this script
-first rather than hand-authoring frontmatter files one at a time — it's very likely
-already wired to produce schema-valid entries.
+New content is generated from a prompt template via a script, not hand-authored entry
+by entry. On `thebeautyanswer.com` that is `scripts/generate-answers.mjs`
+(`npm run gen:answers`); `cookingfix` does not currently ship a generator script, so
+recipe entries there are added another way — check before assuming symmetry.
+
+If asked for a batch of new content, look for the generator first:
+
+```bash
+jq -r '.scripts | to_entries[] | "\(.key): \(.value)"' package.json
+ls scripts/
+```
 
 ## Before publishing new content, run:
 
-1. **SEO audit** — `scripts/audit-seo.mjs` (or repo equivalent). Checks things like
-   missing metadata, duplicate titles, broken internal links — run it, don't just
-   eyeball the new page.
-2. **Image pipeline** — new content typically needs:
-   - `scripts/optimize-answer-images.mjs` (or equivalent) for on-page images
-   - `scripts/generate-og-image.mjs` for the social share card
-   - `scripts/generate-pins.mjs` / `pin-image.mjs` for Pinterest-format images, since
-     these are recipe/beauty content sites where Pinterest is a real traffic source
-3. **Build + preview** — `npm run build` then `npm run preview` before shipping;
-   these are static sites, a broken build is a broken deploy, not a runtime surprise.
+Verified script inventory (re-check with `ls scripts/` — sites drift):
 
-Check each site's actual `package.json` scripts and `scripts/` directory for the exact
-filenames before running anything — names above are the pattern observed, not a
-guarantee every site has all of them.
+| Step | thebeautyanswer.com | cookingfix |
+|------|---------------------|------------|
+| SEO audit | `npm run audit:seo` (`scripts/audit-seo.mjs`) | `npm run audit:seo` |
+| Hub audit | `npm run audit:hubs` (`scripts/audit-problem-hubs.mjs`) | — not present |
+| On-page images | `npm run optimize:images` → `scripts/optimize-answer-images.mjs --update-content --archive-originals` | `scripts/optimize-recipe-images.mjs` |
+| Social card | `npm run gen:og` (`scripts/generate-og-image.mjs`) | same |
+| Pinterest images | `npm run gen:pins` (`scripts/generate-pins.mjs`, `scripts/pin-image.mjs`) | same |
+| Image sourcing | `npm run fetch:images` (`scripts/fetch-images.js`) | same |
+| Slug maintenance | `scripts/add-recipe-slugs.mjs` | same |
+
+Then build and preview:
+
+```bash
+npm run build     # runs postbuild: node scripts/stamp-offline-canonical.mjs
+npm run preview
+```
+
+`postbuild` is load-bearing on `thebeautyanswer.com` — it stamps offline canonicals, so
+never substitute a bare `astro build` for `npm run build`. `cookingfix` has no
+`stamp-offline-canonical.mjs`; confirm with `jq -r '.scripts.postbuild' package.json`
+before assuming either way.
+
+Run the audits — don't eyeball the new page. A broken build is a broken deploy on a
+static site, not a runtime surprise.
+
+`npm run dev:all` (`scripts/dev-all.mjs`) is the multi-process dev entry point; prefer it
+over `npm run dev` when the admin/PHP endpoints matter.
+
+Pinterest matters for both sites (beauty/recipe content), which is why the pin scripts
+exist separately from the OG card — don't skip them for content meant to be shareable.
+
 
 ## Routing / config gotchas
 
@@ -70,6 +104,6 @@ it before assuming a generic `npm run build && rsync` flow — there's usually m
 
 ## Admin editor
 
-There's usually a local-only admin/editor script (`npm run admin`) for editing content
-without hand-writing frontmatter — prefer pointing the user at it over manual file
-edits when the change is a content edit rather than a code change.
+`npm run admin` (`node admin/server.mjs`) is a local-only editor for content entries.
+Prefer pointing the user at it for content edits; reserve hand-editing frontmatter for
+code/schema changes.
