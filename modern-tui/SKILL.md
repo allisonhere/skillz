@@ -30,6 +30,21 @@ Prefer:
 
 Do not force a framework change. Detect and preserve the project's existing stack unless migration is explicitly requested.
 
+## Start Here
+
+| Task | Read |
+|------|------|
+| New TUI from scratch | `references/architecture.md`, then `references/design-language.md` |
+| Restyle / relayout an existing TUI | `references/design-language.md` |
+| Keys, palette, help, forms, scrolling | `references/interaction.md` |
+| Alignment, truncation, emoji/CJK, padding bugs | `references/text-and-width.md` |
+| Panic wrecks the terminal, Ctrl-Z, clipboard, `$EDITOR`, logging | `references/terminal-lifecycle.md` |
+| No color, `TERM=dumb`, piped output, tmux, ASCII fallback | `references/capabilities.md` |
+| Slow redraw, huge lists, high-frequency updates | `references/performance.md` |
+| Dashboards, metrics, sparklines, meters | `references/graphs.md` |
+| Writing tests for a TUI | `references/testing.md` |
+| Reviewing someone's TUI | `references/review-checklist.md` |
+
 ## Framework Selection
 
 When extending an existing project, use its current framework and conventions.
