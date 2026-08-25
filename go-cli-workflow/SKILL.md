@@ -42,6 +42,28 @@ grep -E '^[a-z][a-z-]*:' Makefile | cut -d: -f1
 `scripts/preflight.sh` in this skill runs the whole checklist above, including the extra
 module loop described below, and lists the Makefile targets it found.
 
+## Fast local loop
+
+For small edits, use a targeted loop while iterating, then run the full preflight before
+calling the change done:
+
+```sh
+gofmt -w ./path/to/changed.go
+go test ./internal/package -run TestName
+go test ./internal/package -race
+```
+
+Before deciding the package path, confirm module/workspace context:
+
+```sh
+go env GOMOD
+go env GOWORK
+find . -maxdepth 3 -name go.mod -print
+```
+
+If `GOWORK` is set or nested `go.mod` files exist, be explicit about which module you're
+testing. A green root `go test ./...` does not prove a sibling/nested module was tested.
+
 **Pitfall — bogus `typecheck` errors from golangci-lint.** If `golangci-lint run` fails
 with stdlib errors you didn't cause, e.g.
 

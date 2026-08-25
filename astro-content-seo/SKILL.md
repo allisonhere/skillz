@@ -70,6 +70,20 @@ npm run build     # runs postbuild: node scripts/stamp-offline-canonical.mjs
 npm run preview
 ```
 
+## Content QA pass
+
+Before calling new or edited content ready, check at least one representative generated
+page in preview and verify:
+
+- frontmatter matches `src/content/config.ts` and uses an allowed category/enum value
+- internal links follow the site's trailing-slash convention
+- canonical URL comes from site config/env, not a hardcoded one-off domain
+- detail page, hub/category page, sitemap, and RSS/feed output still include the entry
+- on-page image exists, has useful alt text, and was processed by the image optimizer
+- OG/social card exists for the entry
+- Pinterest pin images exist when the content is meant to be shareable
+- SEO audit does not report duplicate titles/descriptions, missing hubs, or thin content
+
 `postbuild` is load-bearing on `thebeautyanswer.com` — it stamps offline canonicals, so
 never substitute a bare `astro build` for `npm run build`. `cookingfix` has no
 `stamp-offline-canonical.mjs`; confirm with `jq -r '.scripts.postbuild' package.json`

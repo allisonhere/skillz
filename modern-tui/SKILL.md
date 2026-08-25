@@ -43,6 +43,7 @@ Do not force a framework change. Detect and preserve the project's existing stac
 | Slow redraw, huge lists, high-frequency updates | `references/performance.md` |
 | Dashboards, metrics, sparklines, meters | `references/graphs.md` |
 | Writing tests for a TUI | `references/testing.md` |
+| Capturing or reviewing rendered terminal frames | `references/visual-verification.md` |
 | Reviewing someone's TUI | `references/review-checklist.md` |
 
 ## Framework Selection

@@ -32,6 +32,24 @@ Adjacent, same house style, worth checking for prior art before writing a new pr
 `whatthedock` is the fullest example of an app built *on* `tideui` — read its
 `internal/ui/` before reinventing panes, meters, or dashboards.
 
+## Local repo map
+
+Expected local clone names are not perfectly normalized:
+
+| Repo | Local directory name to check first | Import/module cue |
+|------|-------------------------------------|-------------------|
+| `tide` | `tide` | app, owns its UI state |
+| `tidemail` | `tidemail` | app, duplicated primitives may exist |
+| `tideui` | `tideui` | shared UI module; import before copying |
+| `ripple` | `ripple` | text editor component |
+| `TideFTP` | `tideftp` | private app, lowercase local dir |
+| `whatthedock` | `whatthedock` | app using `tideui` heavily |
+| `zellit` | `zellit` | Rust/Ratatui, not Go/Bubble Tea |
+
+Default to `tideui` for panes, rows, overlays, theme roles, scrolling, ratios, and
+compact meters. Default to `ripple` for editable multi-line text. Copying a primitive is
+only reasonable when the target repo already owns a deliberately divergent version.
+
 ## Shared code, not shared modules
 
 Some files are duplicated rather than imported — confirmed: `ansi_wave.go` exists in

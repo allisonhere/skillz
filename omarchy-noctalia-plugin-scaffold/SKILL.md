@@ -113,8 +113,36 @@ grep -E '^[a-z][a-z-]*:' Makefile | cut -d: -f1     # see what's wired
 ruff check . && mypy src && pytest
 ```
 
-Luau widgets have no test harness here — verify them by reloading the plugin in the
-shell and watching its log.
+## Noctalia verification
+
+Luau widgets have no test harness here — verify them in the running shell.
+
+Before editing a manifest, copy the installed API value from a known-working plugin:
+
+```sh
+grep -R '^plugin_api' ~/.config/noctalia/plugins/*/plugin.toml
+```
+
+After installing or editing, reload the shell/plugin using the repo's existing
+`install.sh`, Noctalia command, or Hyprland/session restart pattern already present in
+that project. Then inspect shell logs for raw translation keys, manifest parse errors,
+or widget registration failures:
+
+```sh
+journalctl --user -xe | grep -i noctalia
+grep -R 'settings\..*\.label\|settings\..*\.description' noctalia translations 2>/dev/null
+```
+
+Failure signatures to check first:
+
+- raw `settings.*` text in UI: missing `translations/en.json` key
+- plugin appears installed but no widget is available: missing or wrong `[[widget]]`
+- plugin rejected at load: stale `plugin_api`
+- widget silently blank: missing external command in `dependencies` or a failing
+  `hyprctl`/`wpctl` shell-out
+
+For Python-backed tools, verify both layers: `ruff`/`mypy`/`pytest` for the Python core,
+then reload Noctalia and exercise the widget against the installed command.
 
 ## Starting a new plugin
 
