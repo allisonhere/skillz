@@ -32,7 +32,6 @@ registry to keep in sync — the installer finds skills by scanning for `*/SKILL
 | `tide-tui-ecosystem` | editing a Tide-family repo — cross-repo duplication, `tideui`, release shape |
 | `go-cli-workflow` | building, testing, versioning, or releasing a Go CLI |
 | `astro-content-seo` | adding content or deploying an Astro content site |
-| `omarchy-noctalia-plugin-scaffold` | building an Omarchy/Noctalia widget or Hyprland desktop tool |
 
 `./check-skill` validates all of them; `install-skill --tui` installs interactively.
 
