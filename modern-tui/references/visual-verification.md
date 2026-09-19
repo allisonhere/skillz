@@ -32,6 +32,24 @@ Also check a narrow split around 40 columns, a normal 80x24 terminal, and one la
 desktop-sized terminal. In each size, verify focused pane, selected row, status hints,
 modal placement, long text, empty state, and error state.
 
+## Driving the real app with keys
+
+A check that needs input needs a pty you own, not a pipe. `script -qec "stty cols 120 rows 40; exec ./app" capture.log`
+gives the app a real terminal, but it does not reliably deliver piped keystrokes; fork the pty yourself, set the
+window size (`TIOCSWINSZ`, including the pixel fields when the app's geometry depends on the cell shape), write the
+keys with pauses between them, and read until the app goes quiet.
+
+A TUI interrogates its terminal before the first frame — background colour (`OSC 11`), cursor position (`CSI 6n`) —
+and waits politely forever if nothing answers. A bare pty has to answer both, or the capture is a few dozen bytes of
+query that reads exactly like a crash.
+
+The capture is a diff stream, not a series of screens: the renderer redraws only the cells that changed, with
+absolute cursor moves. Any "read the last frame" text heuristic therefore returns stale or partial content, and a
+half-drawn frame will happily place a row beside content it never shared a screen with. Replay the bytes into a grid
+— a small emulator handling CUP/EL/ED, the cursor moves and SGR is enough — and, while calibrating, print the screen
+after **every** key. That is how you see a pane answer a keypress one press late; capturing per key and replaying
+each capture through the final-screen reader is the cheap version.
+
 ## What To Look For
 
 - no line exceeds the terminal width

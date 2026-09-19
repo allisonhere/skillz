@@ -1,7 +1,7 @@
 ---
 name: modern-tui
 description: Use when designing, building, or reviewing a keyboard-first TUI (terminal UI) — multi-pane layouts, command palettes, focus/selection, themes, compact terminal graphs — in Bubble Tea/Lipgloss, Ratatui/Crossterm, or a comparable framework.
-version: 1.1.0
+version: 1.2.0
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
@@ -228,6 +228,7 @@ Before considering a TUI change complete, verify:
 
 - normal keyboard navigation
 - arrow-key equivalents where applicable
+- every movement key moves exactly one step, including the press that leaves follow/pause mode
 - focus visibility
 - selected-row visibility
 - modal open/cancel/confirm behavior

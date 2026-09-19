@@ -163,7 +163,28 @@ Provide, in every scrollable pane:
 - keep the selected row visible with a small margin (2 rows) rather than pinning it to the edge
 - show a scroll indicator when content is clipped (a rail, or `12–34/512`); a pane that silently hides content reads as a bug
 
+A page is the focused pane's own visible height. In a stacked layout the panes differ in
+height, so paging a short log by the tallest pane's height skips several screenfuls the
+reader never saw.
+
 For streaming content (logs, events, output): follow the tail while the view is at the bottom, stop following the moment the user scrolls up, resume at `G`/`End`, and show the state (`following` / `paused`).
+
+"Stop following" means the movement still happens. Leaving follow mode is a side effect of
+scrolling up, not a replacement for it, so the press that pauses the tail must also move
+the selection one row. A transition that consumes its own delta — pinning the view and
+cancelling the step, often an off-by-one like `n++` written to make the pin land where
+you want — is the classic "this pane is lazy" complaint: the user presses `↑`, the pane
+stands still, and the second press scrolls. It is not a redraw problem, and no amount of
+profiling will find it.
+
+Decide which entry is selected while paused, and keep it readable: pinning the entry that
+just arrived is defensible, but pinning it to the pane's bottom edge pushes out the
+entries below it — the ones that are still arriving.
+
+Resuming by "the cursor has caught up with the newest entry" is a moving target: a feed
+that keeps delivering can make the condition unreachable, and the reader presses down
+forever while the pane stays paused. Give the state an explicit resume key as well, or set
+a flag from a state change instead of comparing a remembered index against a growing count.
 
 Preserve the anchor across resize: the selected row stays selected and visible; do not reset to the top.
 

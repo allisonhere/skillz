@@ -19,6 +19,12 @@ func TestJMovesSelectionAndClampsAtEnd(t *testing.T) {
 
 Cover: focus traversal, selection clamping at both ends, `Esc` at every overlay depth, filter narrowing then clearing, destructive action requiring confirmation, and async `started/succeeded/failed` transitions.
 
+Assert the effect of *every* press rather than the state after a sequence. A swallowed
+first key — a mode transition that consumes its own movement — passes any assertion
+written one press later: `cursor == len(items)-2` after two presses holds whether the
+first press moved or not. Write the first press's own expectation down, and the mode-leaving
+press's too.
+
 Route keys through a semantic action layer and you can test the actions directly, without synthesizing key events.
 
 ## 2. Bounded-render invariant (the highest-value test)
@@ -79,6 +85,8 @@ Snapshot only the surfaces whose exact look is part of the product: main layout,
 - focused and unfocused panes render **differently** (catches theme regressions that erase focus)
 - selected row differs from unselected in more than color (a glyph or background, not hue alone)
 - selection stays visible after resize and after the data set shrinks
+- each press of a movement key moves the selection exactly one row, including the press that leaves follow/pause mode
+- when a behaviour change invalidates a fixture, move the fixture instead of the assertion: a test proving "a long value is wrapped in full" still proves it once the long value sits where it can still be selected
 - a long single-line value is truncated with an ellipsis, not wrapped, in a one-line field
 - the status bar keeps its left segment when the right hints do not fit
 - modal geometry stays inside the viewport at 20×6

@@ -21,6 +21,9 @@
 - Do arrows work where users expect them?
 - Are Vim keys optional rather than mandatory?
 - Are global shortcuts consistent?
+- Does a key that leaves a mode (leaves follow, closes a picker, exits insert) still do the movement it promises, or does the mode change eat the press?
+- Does paging use the focused pane's own visible height?
+- While a streaming pane is paused, is the entry the reader was reading still on screen?
 - Are text inputs protected from conflicting global bindings?
 - Is `Esc` behavior predictable?
 - Does `?` provide useful contextual help?
