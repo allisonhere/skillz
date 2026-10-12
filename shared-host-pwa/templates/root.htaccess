@@ -1,0 +1,15 @@
+Options -Indexes
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+AddType application/manifest+json .webmanifest
+
+# Always revalidate app files so updates show up right away.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|html|webmanifest|svg)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+<IfModule mod_expires.c>
+  ExpiresActive Off
+</IfModule>

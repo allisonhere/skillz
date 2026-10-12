@@ -1,0 +1,4 @@
+# Never serve config or stored data directly.
+<FilesMatch "^(config\.php|.*\.json)$">
+  Require all denied
+</FilesMatch>
