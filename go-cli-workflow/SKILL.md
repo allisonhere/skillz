@@ -25,7 +25,15 @@ go build ./...
 go vet ./...
 go test ./... -race
 golangci-lint run
+go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ```
+
+`govulncheck` is not part of CI, so nothing else will catch it. It separates
+vulnerabilities your code actually *calls* ("Your code is affected by N") from ones that
+only exist in required modules; fix the first group before a release and treat the second
+as a low-urgency bump. In `tidemail` it found 8 reachable issues in `x/net` (reached via
+`goquery`'s HTML parsing) and `goldmark`; bumping with `go get mod@version && go mod tidy`
+cleared them. `go vet` and the tests missed all of it.
 
 If a `Makefile` exists, prefer its targets over raw commands — they sometimes wrap extra
 setup. **But don't assume one exists.** Verified across the local clones: `assho`,
@@ -127,7 +135,8 @@ Per-repo, verified — do not generalize:
 | Repo | Release mechanism |
 |------|-------------------|
 | z13ctl | `.goreleaser.yml` (the only local repo with one) + Makefile |
-| tide | `release.sh` + `install.sh` at root |
+| tide | `release.sh` + `install.sh` at root, and `deploy.sh` + `deploy.conf` |
+| tidemail, tidedeck, tidesms | `deploy.sh` + `deploy.conf` + `.github/workflows/release.yml` (see `tide-tui-ecosystem`) |
 | murmur | `install.sh` only |
 | ripple, omarkey | neither — `ripple` is an importable component, not a shipped binary |
 | assho, z13control, whatthedock | Makefile (`make install` → `/usr/local/bin`, man pages under `/usr/local/share/man/man1`, via `sudo`, never on build) |
@@ -137,6 +146,24 @@ Check before reaching for goreleaser:
 ```sh
 ls .goreleaser.y*ml release.sh install.sh Makefile 2>/dev/null
 ```
+
+## Before tagging a release
+
+A pass that caught real problems in `tidemail` v1.4.0 — run it in this order:
+
+1. Be on `main` (or merge to it first). Check `git status` for strays; `deploy.sh` commits
+   everything with `git add -A`.
+2. Full preflight (`scripts/preflight.sh`): gofmt, build, vet, `go test -race`,
+   `golangci-lint`, `govulncheck`. CI's `golangci-lint` is `latest`, so it flags things like
+   `errcheck` on `fmt.Sscanf`, dead initializers (`ineffassign`), and `math.Pow(x, 3)`
+   (`QF1005`) that vet and tests never mention.
+3. Docs consistency: anything user-facing you changed must also be in the README, the
+   guide, in-app help, and `STATUS.md` (check the repo's `AGENTS.md`/`CONTRIBUTING.md`).
+4. `CHANGELOG.md`: entries under `## Unreleased`, or a populated `## <tag>` section — the
+   release workflow publishes the section named after the tag, verbatim.
+5. Dry-run the notes extraction the workflow uses
+   (`awk -v ver="## vX.Y.Z" '$0==ver{f=1;next} /^## /&&f{f=0} f' CHANGELOG.md`).
+6. After the tag: confirm `main` contains it (`git branch -r --contains vX.Y.Z`).
 
 ## Architecture docs
 

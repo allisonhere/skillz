@@ -79,6 +79,15 @@ already exposes a `Renderer` (panes/rows/blocks/overlays), `PaneRatio` (bounded 
 ratios), `PaneScroller` (offset + clamping), a `Theme` set with contrast enforcement, and
 a theme picker with live preview. `ripple` is the same deal for text editing.
 
+**Check `tideui`'s tags before assuming an API is available.** `tidemail` pins
+`tideui v0.2.2` and uses it for `Theme`, the palettes, and `PaneScroller` (in `cliform`). The colour/contrast helpers
+(`ContrastRatio`, `ReadableText`, `MutedText`, `AdjustLightness`, `MixColors`,
+`AccentReadableOn`, `SurfaceForRatio`, `Hue`, `ShiftHue`) are exported on `tideui`'s
+`main` but were in no tagged release when last checked, so `tidemail/docs/tideui-migration.md`
+(which still calls them unexported) is stale, and `tideftp` still carries its own copy.
+Verify with `git tag --contains <commit>` in `~/Projects/tideui`. `tideui` has no
+changelog viewer, scene canvas, or double-click helper; those live only in `tidemail`.
+
 ## Docs convention
 
 These repos favor a `STATUS.md` (current state, working/not-working feature list) and
@@ -90,12 +99,40 @@ drift out of sync with reality.
 
 Verified per repo — there is no single family rule:
 
-- `tide`: `release.sh` + `install.sh` at root
+- `tide`: `release.sh` + `install.sh` at root, and `deploy.sh` + `deploy.conf`
+- `tidemail`, `tidedeck`, `tidesms`: `deploy.sh` + `deploy.conf` (see below)
 - `murmur`-style: `install.sh` only
 - `ripple`: neither — it is imported, not installed
-- `tideui`: no release scripts; consumers pin it via `go.mod`
+- `tideui`, `tideftp`: no `deploy.sh`; `tideftp` consumes `tideui` via `go.mod`, and
+  `tideui` is released by tagging
 
-Check `ls release.sh install.sh Makefile .goreleaser.y*ml` before assuming a flow. The
+Check `ls deploy.sh deploy.conf release.sh install.sh Makefile .goreleaser.y*ml` before
+assuming a flow.
+
+### `deploy.sh` — the shared Tide release console
+
+`deploy.sh` is the same ~80 KB script in every repo that has one (its `deploy.conf`
+header says it is identical across Tide repos); only `deploy.conf` differs (app name,
+binary, repo, AUR package, `RELEASE_NOTES=changelog`). Facts verified in `tidemail`:
+
+- **It releases whatever branch is checked out** (`git rev-parse --abbrev-ref HEAD`).
+  Tagging from a feature branch leaves `main` behind the release (v1.4.0 was cut from
+  `feat/context-menu` while `main` was still at v1.3.1). Switch to `main` and merge
+  first, or fast-forward `main` to the tag afterwards (`git merge --ff-only vX.Y.Z`).
+- **The commit step runs `git add -A`** after a confirmation that lists the changes, and
+  commits them as `chore: release $VERSION`. Any untracked or half-finished file in the
+  tree rides along — an unrelated assessment doc was committed this way. Run
+  `git status` first; commit or move strays out; read the confirmation list.
+- **Release notes come from `CHANGELOG.md`.** The "Release notes" step renames
+  `## Unreleased` to `## <version>` and opens a fresh empty `## Unreleased` above it.
+  If `## <version>` already exists it skips promotion. The pre-flight only *warns* when
+  Unreleased is empty. Put new entries under `## Unreleased`.
+- **CI builds from the tag, not `main`.** `.github/workflows/release.yml` builds from
+  `github.ref_name` and publishes the changelog section matching the tag, plus
+  `SHA256SUMS` for the in-app updater — so never move or re-push a published tag; ship a
+  patch version instead.
+- `ci.yml` runs gofmt, build, vet, `go test -race`, and `golangci-lint` at `version:
+  latest` — a newer linter than yours can fail a release that passes locally. The
 general Go release/versioning checklist lives in the `go-cli-workflow` skill — including
 the `git describe --match 'v*'` tag-series trap. Don't duplicate it here.
 

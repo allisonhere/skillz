@@ -149,6 +149,28 @@ Useful mouse behaviors:
 
 Avoid hidden mouse-only capabilities.
 
+Patterns that held up in a real client (`tidemail`):
+
+- **Opt-in.** Capturing the mouse takes over the terminal's native click-drag text
+  selection, so keep it off by default and say so in the setting's description.
+- **Hit-test by recomputing the layout** the same way `View()` does (a `paneAt(x, y)`
+  helper shared by click, wheel, and right-click) instead of storing rectangles. Keep that
+  helper next to the layout code so they change together.
+- **Wheel moves the pane under the pointer and never changes focus.** Double-click does
+  exactly what `Enter` does on that row — route it through the key handler.
+- **Right-click selects the row, then opens a menu of only that target's actions** (a
+  folder: sync/new/rename/hide/delete; a message: reply/archive/move/delete). Build the
+  items from the same command ids the palette uses so behavior cannot diverge. Do not open
+  the full command palette: a flat list of everything buries the few actions that apply.
+- **Context menu mechanics:** composite it at the pointer with an `overlayAt(x, y)`
+  helper (a centered-modal helper is the same code with computed x/y), clamp the box inside
+  the screen, skip disabled items when moving the cursor, run on click or `Enter`, and close
+  on `Esc` or an outside click (swallow that click). A menu holds no state, so closing on an
+  outside click is safe — do not do that to modals with unsaved edits.
+- **Modals are a separate, later step.** Order: wheel scrolling in scrollable modals, then
+  click-to-select in list-style modals (palette, pickers, settings sections), then
+  real buttons on confirm dialogs. Leave text inputs and compose alone.
+
 ## Quit Behavior
 
 For applications with state that may be lost, optional quit confirmation is reasonable. For stateless tools, do not slow down quitting unnecessarily.

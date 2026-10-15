@@ -37,6 +37,10 @@ for m in "${mods[@]}"; do
     else
       echo "golangci-lint not installed — skipping (install before pushing)"
     fi
+    # Needs network (fetches the vuln DB). Set SKIP_VULN=1 to skip offline.
+    if [ "${SKIP_VULN:-0}" != "1" ]; then
+      run go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+    fi
     exit "$fail"
   ) || fail=1
 done
