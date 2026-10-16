@@ -88,6 +88,15 @@ a theme picker with live preview. `ripple` is the same deal for text editing.
 Verify with `git tag --contains <commit>` in `~/Projects/tideui`. `tideui` has no
 changelog viewer, scene canvas, or double-click helper; those live only in `tidemail`.
 
+**Other shared libraries.** `ripple` is the text editor (`tidemail`, `tidesms`, `tidegit`,
+`tidedeck`, `whatthedock` import it; `tidemail` was still pinned at v0.2.0 when checked). Its
+v0.3.0 adds `StyleKey`/`Style` hooks for host-driven inline highlighting, so decorations such
+as spelling underlines need no editor change. `tidespell` (v0.1.0, created 2026-10-15) is an
+offline English spell checker: embedded SCOWL word lists, no cgo, `Check` returns misspelled
+spans as rune offsets that feed ripple's `StyleKey`, `Suggest` ranks corrections. No app uses
+it yet. Put reusable, UI-free logic in a small module like these instead of copying it between
+apps.
+
 ## Docs convention
 
 These repos favor a `STATUS.md` (current state, working/not-working feature list) and
