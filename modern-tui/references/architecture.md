@@ -25,6 +25,16 @@ Do not perform slow network, filesystem, subprocess, or API calls directly in `V
 
 Represent long-running work with explicit messages such as started/succeeded/failed and render those states.
 
+A sub-model whose `View` has a value receiver is copied on every frame, so anything `View` learns
+(visible height, total line count) is gone before the next key. When key handling needs it, for
+example to clamp a scroll offset or size a page, record it through a pointer shared by every copy
+(`metrics *viewMetrics`, allocated in the constructor) and treat nil as "not drawn yet".
+
+Async loads need to say what they were for. A result that lands after the cursor moved on must be
+dropped, and a sentinel id for "the virtual row" (Saved, All Unread) collides with real ids sooner
+or later. Carry the row kind and its id (`Kind`, `FeedID`, `FolderID`) on the message and compare
+both against the current selection.
+
 Keep reusable view primitives stateless when possible. A shared renderer/toolkit should accept content, dimensions, focus flags, and theme, then return bounded output. Let the application own persistence, commands, and service state.
 
 ### Minimal Bubble Tea spine

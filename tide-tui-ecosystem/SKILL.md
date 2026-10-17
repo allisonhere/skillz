@@ -73,6 +73,20 @@ gh search code --owner allisonhere --filename ansi_wave.go
 for `ansi_wave.go` while `tidemail` demonstrably has the file. Treat a search miss as
 "unknown", never as "not duplicated"; confirm per repo with the contents API.
 
+Also duplicated or ported between repos (verified 2026-10-15):
+
+- **Drop-shadow compositing**: `tidemail/internal/ui/util.go` (`blendShadowRect`, `overlayAt`) and
+  `color.go` (`shadowColor`, `blendBg`) were ported into `tide/internal/ui/shadow.go` (1×1 offset,
+  `display.shadow`). `tideui/layout.go` has its own copy with a 2×1 offset (`ModalShadow`).
+- **Settings → Changelog**: `internal/ui/settings_changelog.go` in both `tidemail` and `tide`,
+  fed by an embedded `CHANGELOG.md` (`//go:embed` in `main.go`).
+- **`internal/omarchy/omarchy.go`** (theme detection) is the same file in both. The Omarchy *bar*
+  code (`tide/internal/omarchy/bar.go`, `tide --bar`) exists only in `tide`.
+- **Headless CLI**: `tidemail` has `internal/cli` (`messages list --json`, `skill`,
+  `install-skill`); `tide` has only `--refresh`, `--unread-count`, `--bar`, `--help` (`cli.go`).
+- **Windows**: `tide` and `tidemail` both ship experimental Windows zips; per the owner,
+  `tideftp` and `whatthedock` still have Windows problems.
+
 `tideui` is the one repo meant to be a real module dependency. If you are writing pane
 chrome, layout math, scrolling, theming, or modal overlays, check `tideui` first — it
 already exposes a `Renderer` (panes/rows/blocks/overlays), `PaneRatio` (bounded split
@@ -103,6 +117,12 @@ These repos favor a `STATUS.md` (current state, working/not-working feature list
 sometimes a `PLAN.md` alongside `README.md` and `CLAUDE.md`. When a change materially
 affects what's working, update `STATUS.md` — it's the quick-scan doc, don't let it
 drift out of sync with reality.
+
+## User-facing docs and wiki
+
+When behavior changes, update the docs at the same time as the code. Check the repo contributor instructions, then keep its primary guide, README, current-status page, in-app help, and shortcut reference consistent wherever they describe that behavior. Search for the old wording so secondary help screens do not keep teaching the previous flow.
+
+A GitHub wiki is a separate repository and does not update when the source repo changes. Inspect its page list and edit the relevant pages and navigation index alongside the source docs. Link wiki explanations to the source revision or release they describe, and verify the published page after pushing. If the wiki is unavailable, finish the source docs and record the wiki update as outstanding rather than implying it was published.
 
 ## Release pattern
 
@@ -135,7 +155,10 @@ binary, repo, AUR package, `RELEASE_NOTES=changelog`). Facts verified in `tidema
 - **Release notes come from `CHANGELOG.md`.** The "Release notes" step renames
   `## Unreleased` to `## <version>` and opens a fresh empty `## Unreleased` above it.
   If `## <version>` already exists it skips promotion. The pre-flight only *warns* when
-  Unreleased is empty. Put new entries under `## Unreleased`.
+  Unreleased is empty. Put new entries under `## Unreleased`. That step only exists when
+  `deploy.conf` sets `RELEASE_NOTES="changelog"` (`tidemail`); `tide` uses `"generated"` (GitHub's
+  automatic notes), so its pipeline has no notes step and the heading is renamed by hand. A dry
+  run still rebuilds the tracked `dist/` binaries.
 - **CI builds from the tag, not `main`.** `.github/workflows/release.yml` builds from
   `github.ref_name` and publishes the changelog section matching the tag, plus
   `SHA256SUMS` for the in-app updater — so never move or re-push a published tag; ship a
@@ -144,6 +167,10 @@ binary, repo, AUR package, `RELEASE_NOTES=changelog`). Facts verified in `tidema
   latest` — a newer linter than yours can fail a release that passes locally. The
 general Go release/versioning checklist lives in the `go-cli-workflow` skill — including
 the `git describe --match 'v*'` tag-series trap. Don't duplicate it here.
+
+## Async state in Bubble Tea
+
+Commands run concurrently and often carry snapshots of model state. When a command saves or mutates state, give the operation a session identity and revision, serialize writes that share a durable record, and let only the acknowledgment for the current revision clear dirty state. Closing, discarding, reopening, and undoing work must also define what happens to outstanding commands. Check both the command result and the visible/durable state in a regression test.
 
 ## When starting new Tide-family work
 

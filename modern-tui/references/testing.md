@@ -93,6 +93,26 @@ Snapshot only the surfaces whose exact look is part of the product: main layout,
 - theme contrast: every built-in theme clears the ratio floors (loop over the theme list and assert)
 - ASCII level emits no non-ASCII bytes: `for _, r := range out { if r > unicode.MaxASCII { t.Fatal(...) } }`
 
+## Tests that pass for the wrong reason
+
+- **Color assertions need a color profile.** `go test` has no TTY, so lipgloss resolves the
+  `Ascii` profile and strips every color. "Turning the shadow on changes the render" passed in
+  Tide with no color involved at all. In a test that asserts on color, force
+  `lipgloss.SetColorProfile(termenv.TrueColor)` and restore it in `t.Cleanup`. To check one cell,
+  parse the frame with `cellbuf.NewBuffer(w, h)` + `cellbuf.SetContent(buf, view)` and read
+  `buf.Cell(x, y).Style.Bg`; grepping the raw escapes finds the *first* color code, which is
+  usually the page's, not the cell's.
+- **Break it on purpose.** After writing a regression test, temporarily undo the fix (set an alpha
+  to 0, swap two fields, drop the timeout) and watch the test fail; then restore. A test that
+  cannot fail is decoration.
+- **Two lists that must agree need a guard test.** A settings screen keeps its Tab order in one
+  list and its drawn order in another. Assert that the focusable fields appear in the same order
+  in both, for every section and for conditional fields (retro-theme colors, Omarchy-only rows).
+- **A threshold you cannot always reach.** `shadowColor` darkens the page until it clears a
+  contrast floor, but a near-black theme cannot reach the floor even with pure black (1.28 vs 1.6).
+  Assert what the code guarantees (darker than the page; clears the floor where it can; otherwise
+  the darkest color available), not the constant.
+
 ## Commands
 
 ```bash

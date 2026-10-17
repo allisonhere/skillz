@@ -50,6 +50,30 @@ grep -E '^[a-z][a-z-]*:' Makefile | cut -d: -f1
 `scripts/preflight.sh` in this skill runs the whole checklist above, including the extra
 module loop described below, and lists the Makefile targets it found.
 
+### Getting `golangci-lint` to zero
+
+`tide` went from 94 issues to 0 in three commits. What made it tractable:
+
+- `golangci-lint run --new-from-rev=<last-tag> ./...` separates what you introduced (24 of
+  the 94) from what was already there. A failing lint step stops the `deploy.sh` pipeline, so
+  inherited issues block a release too.
+- The linter caps how many repeats of one finding it shows, so fixing some reveals more
+  (94 → 65 → 44 → 17 → 5 → 19). Set `issues: {max-issues-per-linter: 0, max-same-issues: 0}`
+  in `.golangci.yml` and loop until `golangci-lint run` **exits 0**, not until the visible list
+  is empty.
+- Pin a config (`version: "2"`) that excludes errcheck only for calls whose error is
+  conventionally ignored: `fmt.Fprint*`, `(io.ReadCloser).Close`, `(*database/sql.Rows).Close`,
+  `(*database/sql.DB).Close`, `(*database/sql.Tx).Rollback`, plus errcheck in `_test.go`. Discard
+  the rest explicitly (`_ = f.Close()`). **Handle** the close of a file you wrote: a bare
+  `defer f.Close()` after an encoder hid a failed `config.Save`. Errors dropped on a save path
+  should reach the user ("could not save settings"), not vanish.
+- `unused` counts test usage, so anything it reports is dead everywhere: delete it. A small
+  `go/parser` program that removes each `FuncDecl` plus its doc comment beats hand-editing 27
+  functions; run the tests afterwards.
+- `SA1019` on `lipgloss.Style.Copy()`: styles are value types, so just drop the call.
+- zsh does not word-split an unquoted `$VAR` into arguments, so `tool $ARGS` passes one
+  argument; pipe the list through `xargs`.
+
 ## Fast local loop
 
 For small edits, use a targeted loop while iterating, then run the full preflight before
@@ -165,6 +189,35 @@ A pass that caught real problems in `tidemail` v1.4.0 — run it in this order:
    (`awk -v ver="## vX.Y.Z" '$0==ver{f=1;next} /^## /&&f{f=0} f' CHANGELOG.md`).
 6. After the tag: confirm `main` contains it (`git branch -r --contains vX.Y.Z`).
 
+Rehearse the console first. `./deploy.sh --check` prints the readiness checklist with no
+terminal; driving `./deploy.sh --dry-run` → Full release in tmux walks check, bump, test, lint,
+build, commit, push and tag without committing anything. It **still rebuilds the tracked
+`dist/` binaries**, so run `git checkout -- dist` afterwards. `RELEASE_NOTES="generated"` in
+`deploy.conf` (`tide`) skips the notes step, so rename `## Unreleased` to the new version by
+hand; with `changelog` (`tidemail`) the console promotes it.
+
+## A headless command beside a TUI
+
+`tide --refresh`, `--unread-count` and `--bar` run without the reader, from cron or a status bar.
+What it took to do that safely:
+
+- Dispatch headless flags in `main` **before** config, database and terminal setup, so nothing
+  writes escape codes to stdout. A flag the binary does not know falls through to the TUI, which
+  prints terminal sequences instead of an error.
+- Put the work both paths need (fetch, convert, store) in a package neither UI owns
+  (`internal/refresh`) and have the TUI call it; the feed manager's add path had grown its own copy.
+- The database must tolerate a second process: WAL plus a busy timeout. With `modernc.org/sqlite`
+  put it in the DSN (`path + "?_pragma=busy_timeout(5000)"`), because a `PRAGMA` through `db.Exec`
+  reaches only one pooled connection. Test it: hold a write transaction on one handle, commit it
+  from a timer, and write from a second handle; without the timeout that write fails at once with
+  SQLITE_BUSY.
+- When another program runs your binary (a bar, cron), **probe `exe --flag` for the expected
+  output before wiring it in.** An older build ignores the flag, starts the TUI, and its startup
+  escape codes (`OSC 11`, Kitty `a=d`) became the bar's text. A toggle that falls back to the
+  installed binary when run from `go run` hits this exactly when that binary is old.
+- `//go:embed CHANGELOG.md` plus a test that the embedded text has the sections you expect keeps
+  an in-app changelog in step with the build.
+
 ## Architecture docs
 
 `z13ctl` is the repo with a root `CLAUDE.md` (and a `CONTRIBUTING.md`); `tidemail` keeps
@@ -180,8 +233,9 @@ existing convention.
 ## Conventions worth preserving
 
 - **Error handling**: surface failures to the user rather than dropping them silently.
-  If an error is deliberately ignored, mark it `//nolint:errcheck` with a short reason,
-  don't just discard it quietly.
+  If an error is deliberately ignored, say so: `_ = f.Close()`, or a `//nolint:errcheck`
+  with a short reason. Calls whose error is conventionally ignored are better excluded once
+  in `.golangci.yml` than annotated everywhere (see "Getting `golangci-lint` to zero").
 - **Tests**: table-driven by default.
 - Man pages / install paths: tools that install system-wide (see assho's Makefile)
   install to `/usr/local/bin` and `/usr/local/share/man/man1` via `sudo`, gated behind

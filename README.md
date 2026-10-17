@@ -33,6 +33,7 @@ registry to keep in sync — the installer finds skills by scanning for `*/SKILL
 | `go-cli-workflow` | building, testing, versioning, or releasing a Go CLI |
 | `astro-content-seo` | adding content or deploying an Astro content site |
 | `wow-addon-workflow` | writing, debugging, testing, or releasing a WoW addon (modern API, secret values, taint, CurseForge) |
+| `shared-host-pwa` | building a no-build web app that syncs across phones and lives on cheap PHP hosting |
 
 `./check-skill` validates all of them; `install-skill --tui` installs interactively.
 

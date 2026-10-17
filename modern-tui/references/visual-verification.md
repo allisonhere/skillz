@@ -50,6 +50,27 @@ half-drawn frame will happily place a row beside content it never shared a scree
 after **every** key. That is how you see a pane answer a keypress one press late; capturing per key and replaying
 each capture through the final-screen reader is the cheap version.
 
+## Driving the app with tmux
+
+When you only need to press keys and read the screen, tmux is simpler than owning a pty: it
+delivers keystrokes, answers the terminal's startup queries, and holds a real grid.
+
+```bash
+tmux new-session -d -s shot -x 110 -y 30 \
+  "env COLORTERM=truecolor XDG_DATA_HOME=$S/data XDG_CONFIG_HOME=$S/config ./app"
+sleep 2; tmux send-keys -t shot S; sleep 1; tmux send-keys -t shot Down
+tmux capture-pane -p -t shot              # the visible text
+tmux capture-pane -e -p -t shot | grep -o '48;2;[0-9]*;[0-9]*;[0-9]*' | sort | uniq -c
+tmux kill-session -t shot
+```
+
+`-e` keeps the color escapes, which is how you check that a shadow is darker than the page or a
+focus rail moved. Run it against a **copy** of the real data and config (`cp` the database and
+`config.toml` into a scratch directory and point `XDG_DATA_HOME` / `XDG_CONFIG_HOME` at it), with
+update checks and background refresh switched off in the copied config, so a capture can never
+change the user's library. Capture at two or three sizes; a toggle that sat below the fold at
+34 rows was invisible in the reporter's window.
+
 ## What To Look For
 
 - no line exceeds the terminal width
@@ -66,3 +87,7 @@ each capture through the final-screen reader is the cheap version.
 If you save screenshots or frame dumps, keep them under an existing test/snapshot
 location such as `testdata/`. Do not commit ad hoc terminal captures unless the repo
 already treats them as goldens.
+
+Keep captures out of the repo root, too: a `pic.png` screenshot there was committed twice by a
+release script's `git add -A`, once under the message "chore: release v1.2.1". Put scratch
+captures in a temp directory.
