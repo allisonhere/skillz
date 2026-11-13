@@ -70,6 +70,54 @@ Prefer centered, restrained overlays with:
 
 Avoid huge modal boxes that consume the entire screen for tiny tasks.
 
+### Top-to-bottom light sweep
+
+A restrained shine moving from the top of a modal to the bottom is a preferred
+optional flourish for this user's Tide-style interfaces. Use it where it fits
+the application's visual language; it is not a requirement for every modal.
+
+- Move a soft highlight band downward across the border or surface. Derive its
+  colors from the active theme and preserve text, selection, and focus contrast.
+- Keep geometry and text stationary during the sweep. Do not simulate shine by
+  moving content or changing which row is selected.
+- A short single pass on opening is a useful default. Avoid a permanent repaint
+  loop or repeated flashes while the user reads or types.
+- With no color, reduced motion, or limited terminal capabilities, render the
+  normal static modal. The effect must carry no essential information.
+
+### Top-to-bottom collapse
+
+A vertical closing transition is another preferred optional pattern. For a
+literal top-to-bottom collapse, keep the bottom edge anchored and move the top
+edge down until the panel disappears; a centered squeeze is a different effect.
+
+- Render the modal at its normal geometry, then clip its visible rows as the top
+  edge advances. Avoid repeatedly reflowing text into a smaller box.
+- Restore the underlying application cells as each row is uncovered, including
+  any shadow. Never leave border or shadow fragments behind.
+- Closing must remain immediate logically: release the modal's input ownership,
+  restore the intended focus, and treat the remaining animation as noninteractive.
+  A new modal or resize may finish the old transition immediately.
+- Reduced motion uses an immediate close. If the host already has an animation
+  duration setting, honor it instead of adding a second timing system.
+
+### Implementing modal motion
+
+Use the host's existing animation mechanism, inspecting TideUI's actual API
+before adding an application-owned effect. These patterns do not imply that
+TideUI exposes a ready-made shine or collapse widget.
+
+In Bubble Tea, advance elapsed-time progress through bounded tick messages;
+keep rendering pure and never sleep in Update or View. Tag ticks with the modal
+session so a late tick cannot animate a newly opened modal. Stop scheduling when
+the pass finishes, the modal closes, or the application exits. Shine and collapse
+may be used independently or together; neither should delay keyboard actions.
+
+Verify opening, dismissal, rapid close/reopen, resizing mid-transition, and
+light/dark/high-contrast themes. Test first, intermediate, and final frames with
+a deterministic clock, bounded output at tiny sizes, restoration of exposed
+background cells, and the static reduced-motion path.
+
 ## Theme Preview
 
 For theme pickers, preview changes live as the user navigates when rollback is reliable. Cancel should restore the previously confirmed theme. Confirm should persist only the selected theme.
