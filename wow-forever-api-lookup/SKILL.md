@@ -65,6 +65,11 @@ TradeSkillMaster/wowlua-ls (GPL-3.0; running it is fine, do not copy its stubs i
 - Atraeau/WoW-Addons: generated API docs with signatures (no licence file: read only).
 - turlockmike/pawn-forever (MIT): Forever tooltip patterns and per-spec stat weights, derived from
   GearQuest Forever (Henrik8210).
+- nobody174/wow-forever (Road to Forever addon, All Rights Reserved: read for ideas, never copy code or data):
+  a worked example of Forever stat scoring (`GearScore.lua` maps each weight name to several `ITEM_MOD_*`
+  keys, including melee, ranged and spell variants of crit, hit and haste, and healing/spell damage done),
+  a talent calculator whose data came from Wowhead's Forever calculator, and `/r2f debug gear` style
+  debug commands. Use its key-name candidates as hypotheses, then confirm with your own probe.
 - Blizzard's Forever developer notes and class deep dives for rule changes (merged hit and crit,
   weapon DPS on feral forms, a new 16-point talent tier).
 
@@ -83,6 +88,8 @@ result with the build number.
   (`GetConfigInfo(cfg).treeIDs`, `GetTreeNodes`, `GetNodeInfo(cfg, node).currentRank`,
   `GetEntryInfo`, `GetDefinitionInfo(...).spellID`). `C_Traits.GetConfigInfo(0)` returns nothing.
 - Role comes from `GetShapeshiftForm()` (Druid: Cat = 3, Bear = 1), talents and a manual choice, not a spec.
+- The class talent tree is one trait tree (a Druid's had 52 nodes) holding all three tabs; node positions
+  (`posX`, `posY` from `C_Traits.GetNodeInfo`) are the way to tell the tabs apart. Talents unlock at level 10.
 - `C_Item.GetItemStats(link)` returns `ITEM_MOD_*_SHORT` keys; `C_Item.GetItemStatDelta`,
   `GetItemUniquenessByID`, `IsEquippableItem` exist. Dual wield: `IsSpellKnown(674)` is false
   without it; `IsDualWielding` exists.
