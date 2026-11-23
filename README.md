@@ -34,6 +34,7 @@ registry to keep in sync — the installer finds skills by scanning for `*/SKILL
 | `astro-content-seo` | adding content or deploying an Astro content site |
 | `wow-addon-workflow` | writing, debugging, testing, or releasing a WoW addon (modern API, secret values, taint, CurseForge) |
 | `wow-forever-api-lookup` | before writing or reviewing WoW Forever API calls: search Forever's UI source, wowlua-ls and community references, then probe the client |
+| `veteran-search` | research that needs facts from the web, repos, or big source trees: primary sources, directory browsing, exact strings, local mirrors, provenance |
 | `shared-host-pwa` | building a no-build web app that syncs across phones and lives on cheap PHP hosting |
 
 `./check-skill` validates all of them; `install-skill --tui` installs interactively.
