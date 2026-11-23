@@ -1,7 +1,7 @@
 ---
 name: wow-addon-workflow
 description: Use when writing, debugging, testing, or releasing a World of Warcraft addon for the modern-API clients (WoW Forever / Midnight) — covers secret values, taint pitfalls, Lua 5.1 testing, probing the live client, and tag-based CurseForge releases.
-version: 1.0.0
+version: 1.1.0
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -38,6 +38,24 @@ cannot be compared, added, concatenated or used as a table key.
 - Let the game draw what it can: native aura containers and cooldown frames keep updating
   in combat when addons cannot read the data.
 
+### Enemy auras cannot be read in combat at all
+
+`C_UnitAuras.GetAuraDataByIndex("target", i, "HARMFUL|PLAYER")` errors in combat with
+`Auras cannot be accessed when secret while tainted by '<addon>'`, even for your own debuffs
+(`pcall` catches it, but there is no data). So a feature that needs a target debuff's time
+cannot read it. What worked for a debuff timeline (Tempus):
+
+- **Time your own casts.** `UNIT_SPELLCAST_SUCCEEDED` for `player` gives a readable `spellID`;
+  start `GetTime() + length` keyed by target GUID (`UnitGUID("target")`, check it is not secret).
+- **Get the length without reading the aura:** a list the player fills in (`Moonfire 12`), a
+  "pick from my spells" menu that parses the spell text (`C_Spell.GetSpellDescription`, pattern
+  `for N sec` / `over N sec`, harmful spells only via `IsHarmfulSpell`), seeds, and lengths
+  learned on any out-of-combat read.
+- Blizzard's native aura containers keep working in combat but cannot be repositioned per aura or
+  animated from their times. Say so early; do not promise per-icon animation on them.
+- Reading **spellbook** spells: `C_SpellBook.GetNumSpellBookSkillLines` / `GetSpellBookItemInfo`
+  with a fallback to `GetNumSpellTabs`, skipping passives and off-spec lines.
+
 ## Taint
 
 - **Never reparent, `UnregisterAllEvents`, or write fields on Edit Mode managed frames**
@@ -58,6 +76,34 @@ Add a slash command (`/addon probe`) that records frame names, children, method 
 `C_*` namespaces into the SavedVariables table, then read it from
 `WTF/Account/<id>/SavedVariables/<Addon>.lua` after a `/reload`. Cheaper than guessing frame
 structure, and it works for frames that only exist once an option is enabled.
+
+## Cooldown frames and icon looks
+
+- `CooldownFrameTemplate` draws a dark swipe over the whole icon. On an icon that moves (a
+  timeline) it reads as a black square: `cooldown:SetDrawSwipe(false)`. Keep the game's own
+  number or hide it with `cooldown:SetHideCountdownNumbers(true)`.
+- Greying an icon "while on cooldown" is wrong when on cooldown is the normal state.
+- Fades: `texture:SetGradient("VERTICAL", CreateColor(r,g,b,a1), CreateColor(r,g,b,a2))` (min colour
+  at the bottom). A pure function for the fade curve is easy to unit test.
+- Dark-on-dark: a near-black panel at any opacity looks identical over a dark world, so opacity
+  sliders seem broken. Use a lighter slate and test the opacity range by eye.
+
+## Verify the user's real settings
+
+When an in-game feature "does nothing", read `WTF/Account/<id>/SavedVariables/<Addon>.lua` before
+theorising. It showed the mode really was on, but the list the feature needed was empty and the
+background style was the faintest one. Also add a `/addon debug` command that prints the raw state
+(frame shown, size, counts, API presence, and `type` plus `SECRET` for each value read) and ask the
+user to paste its output; that settled "no icons" in one round trip.
+
+## Settings UI
+
+- A live preview on the settings page that reuses the real layout code (same function, fake data on
+  a timer) lets the user judge sliders without casting anything. Show markers for thresholds (a
+  dashed "fade starts" line).
+- A corner grip that resizes a frame by dragging maps the dragged box to settings (width to icon size,
+  height to length); unit test that mapping as a pure function.
+- Long dropdown lists: lay out in columns rather than relying on mouse-wheel scrolling.
 
 ## Testing
 
