@@ -1,6 +1,6 @@
 ---
 name: veteran-search
-description: Use when a question needs facts from the web, a code host, or a large source tree and a first keyword search came back thin — search like an old internet hand (Gopher, Archie, Usenet, FTP indexes): find the primary source, browse its tree, search exact strings, grep local mirrors, follow the citations, and record where each fact came from.
+description: "Use when a question needs facts from the web, a code host, or a large source tree and a first keyword search came back thin — search like an old internet hand (Gopher, Archie, Usenet, FTP indexes): find the primary source, browse its tree, search exact strings, grep local mirrors, follow the citations, and record where each fact came from."
 version: 1.0.0
 license: MIT
 platforms: [linux, macos]
