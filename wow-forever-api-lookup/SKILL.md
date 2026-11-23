@@ -82,12 +82,12 @@ result with the build number.
 - Talents are one class tree read with `C_ClassTalents.GetActiveConfigID()` then `C_Traits`
   (`GetConfigInfo(cfg).treeIDs`, `GetTreeNodes`, `GetNodeInfo(cfg, node).currentRank`,
   `GetEntryInfo`, `GetDefinitionInfo(...).spellID`). `C_Traits.GetConfigInfo(0)` returns nothing.
-- Role comes from `GetShapeshiftForm()`, talents and a manual choice, not a spec.
+- Role comes from `GetShapeshiftForm()` (Druid: Cat = 3, Bear = 1), talents and a manual choice, not a spec.
 - `C_Item.GetItemStats(link)` returns `ITEM_MOD_*_SHORT` keys; `C_Item.GetItemStatDelta`,
   `GetItemUniquenessByID`, `IsEquippableItem` exist. Dual wield: `IsSpellKnown(674)` is false
   without it; `IsDualWielding` exists.
 - Attack power follows the classic formulas: cat AP = level*2 + 2*Str + Agi - 20; humanoid
-  druid AP = 2*Str - 20.
+  druid AP = 2*Str - 20; bear AP = level*3 + 2*Str - 20.
 - In combat enemy auras throw "Auras cannot be accessed when secret": time your own casts from
   `UNIT_SPELLCAST_SUCCEEDED` with a duration learned out of combat. `C_Secrets.GetSpellAuraSecrecy`
   answers per spell.
