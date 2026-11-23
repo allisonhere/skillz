@@ -20,7 +20,8 @@ checker). Read the pitfalls before debugging an in-game error; most of them cost
 "WoW Forever" (the install folder may still be called `_classic_beta_`) runs the **modern
 Midnight addon API**: interface `16001`, retail-style Blizzard frames (`PlayerSpellsFrame`,
 Edit Mode), a built-in cooldown manager and damage meter. Do not assume classic frame names.
-Blizzard's UI source is usually **not on disk**, so find structure by probing (below).
+Blizzard's UI source has a `forever` branch (Gethe/wow-ui-source): search it before probing, see the
+`wow-forever-api-lookup` skill. Probe the live client to confirm (below).
 
 ## Secret values
 
